@@ -1,0 +1,248 @@
+/* ---------------------------------------------------- */
+/* 1. RESET Y FUENTES */
+/* ---------------------------------------------------- */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Roboto', sans-serif; /* Fuente similar a la del diseño */
+  color: #333;
+  background-color: #f7f7f7; /* Fondo ligero */
+}
+
+/* ---------------------------------------------------- */
+/* 2. BARRA SUPERIOR (HEADER) y PATH */
+/* ---------------------------------------------------- */
+.header-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #000;
+  color: #fff;
+  padding: 15px 50px;
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.nav-actions {
+  display: flex;
+  gap: 20px;
+}
+
+.page-path {
+  font-size: 14px;
+  color: #666;
+  padding: 20px 50px 0;
+  margin-bottom: 20px;
+}
+
+/* ---------------------------------------------------- */
+/* 3. CONTENEDOR PRINCIPAL (GRID) */
+/* ---------------------------------------------------- */
+.perfil-contenedor-principal {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 50px 50px;
+  display: grid;
+  /* 2 columnas: izquierda fija, derecha con espacio */
+  grid-template-columns: 450px 1fr; 
+  gap: 50px;
+  min-height: 80vh;
+}
+
+.perfil-titulo {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 30px;
+}
+
+/* ---------------------------------------------------- */
+/* 4. COLUMNA IZQUIERDA (Perfil, Historial, Favoritos) */
+/* ---------------------------------------------------- */
+.perfil-columna-izquierda {
+  padding-right: 50px; /* Espacio antes del separador */
+  border-right: 1px solid #ddd; /* El separador vertical sutil */
+}
+
+/* Info de Usuario */
+.perfil-foto {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 20px;
+}
+
+.nombre-usuario {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.email-usuario {
+  font-size: 16px;
+  color: #666;
+  margin-bottom: 15px;
+}
+
+.descripcion-usuario, .miembro-desde {
+  font-size: 14px;
+  color: #333;
+  line-height: 1.5;
+}
+
+/* Secciones de Historial y Favoritos */
+.titulo-seccion {
+  font-size: 24px;
+  font-weight: 700;
+  margin-top: 40px;
+  margin-bottom: 20px;
+}
+
+.pedido-item {
+  padding: 15px 0;
+  border-bottom: 1px solid #ccc; /* Línea separadora */
+  font-size: 14px;
+}
+
+.last-pedido {
+  border-bottom: none; /* Eliminar borde del último elemento */
+}
+
+.pedido-numero {
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+
+.pedido-item p {
+  margin: 2px 0;
+}
+
+/* ---------------------------------------------------- */
+/* 5. SECCIÓN FAVORITOS */
+/* ---------------------------------------------------- */
+.favorito-item {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 15px 0;
+  border-bottom: 1px solid #ccc; /* Línea separadora */
+}
+
+.last-favorito {
+  border-bottom: none;
+}
+
+.favorito-imagen {
+  width: 70px;
+  height: 70px;
+  object-fit: cover;
+}
+
+.favorito-detalle {
+  flex-grow: 1; /* Ocupa el espacio restante */
+}
+
+.favorito-nombre {
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 5px;
+}
+
+.favorito-color {
+  font-size: 14px;
+  color: #666;
+}
+
+.favorito-corazon {
+  color: #e30000; /* Color rojo del corazón */
+  font-size: 18px;
+}
+
+/* ---------------------------------------------------- */
+/* 6. COLUMNA DERECHA (Modificar Información) */
+/* ---------------------------------------------------- */
+.modificar-foto {
+  width: 100%; /* Ocupa todo el ancho disponible */
+  max-width: 350px; /* Tamaño máximo para centrarlo visualmente */
+  display: block;
+  margin: 0 auto 30px;
+}
+
+.formulario-modificar {
+  display: flex;
+  flex-direction: column;
+  gap: 15px; /* Espacio entre filas */
+}
+
+.form-fila {
+  display: flex;
+  gap: 20px;
+  width: 100%;
+}
+
+.form-grupo {
+  flex: 1; /* Hace que Nombre y Apellido ocupen el 50% cada uno */
+}
+
+.form-fila-completa {
+  width: 100%;
+}
+
+.form-grupo label, .form-fila-completa label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 5px;
+  color: #333;
+}
+
+.form-grupo input, .form-fila-completa input, .form-dropdown {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  background-color: #eee; /* Fondo gris claro de los inputs */
+  font-size: 16px;
+  height: 40px;
+}
+
+.form-dropdown {
+  width: 70%; /* Aproximadamente el ancho que tiene en el diseño */
+  appearance: none; /* Oculta la flecha nativa */
+  padding-right: 30px;
+}
+
+.form-fila-accion {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end; /* Alinea botón a la derecha */
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.boton-guardar {
+  background-color: #000;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  height: 40px;
+}
+
+/* ---------------------------------------------------- */
+/* 7. FOOTER */
+/* ---------------------------------------------------- */
+.footer-web {
+  background-color: #000;
+  color: #fff;
+  padding: 30px 50px;
+  margin-top: 50px;
+  /* Estilos adicionales para replicar las secciones del footer... */
+}

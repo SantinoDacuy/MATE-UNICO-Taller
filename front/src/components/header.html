@@ -1,0 +1,52 @@
+<!-- header.html - fragmento reutilizable para Mate Único -->
+<header class="mu-header">
+  <div class="mu-header__inner">
+    <div class="mu-header__left">
+      <a href="/" class="mu-brand" aria-label="Ir al inicio">
+        <span class="mu-brand-text">Mate</span>
+        <img src="/src/assets/logo.png" alt="logo" class="mu-logo-inline" />
+        <span class="mu-brand-text">Único</span>
+      </a>
+    </div>
+
+    <div class="mu-header__center">
+      <form class="mu-search" role="search" aria-label="Buscar productos" action="/productos" method="get">
+        <label for="mu-search-input" class="sr-only">Buscar productos</label>
+        <input id="mu-search-input" name="q" class="mu-search__input" type="search" placeholder="Buscar mates, accesorios, combos..." aria-label="Buscar" />
+        <button type="submit" class="mu-search__button" aria-label="Buscar">
+          <!-- search SVG -->
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="11" cy="11" r="6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </form>
+    </div>
+
+    <div class="mu-header__right">
+      <a href="/carrito" class="mu-icon mu-cart" aria-label="Carrito">
+        <!-- cart SVG -->
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M6 6h15l-1.5 9h-11z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="10" cy="20" r="1" fill="currentColor"/>
+          <circle cx="18" cy="20" r="1" fill="currentColor"/>
+        </svg>
+        <span id="mu-cart-badge" class="mu-badge" data-count="0">0</span>
+      </a>
+
+      <div id="mu-profile-area" class="mu-profile" aria-live="polite">
+        <a id="mu-profile-link" href="/perfil" class="mu-icon mu-user" aria-label="Perfil">
+          <!-- user SVG -->
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span id="mu-profile-name" class="mu-profile-name">Ingresar</span>
+        </a>
+        <button id="mu-logout-button" class="mu-logout" style="display:none;">Cerrar sesión</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Para usar: insertar este fragmento dentro del contenedor donde quieras renderizar el header. -->

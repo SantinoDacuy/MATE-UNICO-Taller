@@ -1,0 +1,68 @@
+<!-- footer.html - fragmento reutilizable para Mate Único -->
+<footer class="mu-footer">
+  <div class="mu-footer__inner">
+    <div class="mu-footer__brand-col">
+      <a href="/" class="mu-footer__logo-link">
+        <img src="/src/assets/logo.png" alt="Mate Único" class="mu-footer__logo" />
+      </a>
+      <p class="mu-footer__tag">Diseños y accesorios seleccionados para los verdaderos amantes del mate.</p>
+      <div class="mu-footer__socials" aria-label="Redes sociales">
+        <a href="#" class="mu-social" aria-label="Instagram">
+          <!-- instagram svg -->
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect x="3" y="3" width="18" height="18" rx="4" stroke="currentColor" stroke-width="1.2"/>
+            <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.2"/>
+            <circle cx="17.5" cy="6.5" r="0.5" fill="currentColor"/>
+          </svg>
+        </a>
+        <a href="#" class="mu-social" aria-label="Facebook">
+          <!-- facebook svg -->
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M18 2h-3a4 4 0 0 0-4 4v3H8v3h3v7h3v-7h2.5l.5-3H14V6a1 1 0 0 1 1-1h3z" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </a>
+        <a href="#" class="mu-social" aria-label="YouTube">
+          <!-- youtube svg -->
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect x="3" y="6" width="18" height="12" rx="2" stroke="currentColor" stroke-width="1.2"/>
+            <path d="M10 9.5v5l4-2.5-4-2.5z" fill="currentColor"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+
+    <div class="mu-footer__links-col">
+      <h4>Comprar</h4>
+      <ul class="mu-links">
+        <li><a href="/productos?cat=mate">Mates</a></li>
+        <li><a href="/productos?cat=bombilla">Bombillas</a></li>
+        <li><a href="/productos?cat=bolsos">Bolsos</a></li>
+      </ul>
+    </div>
+
+    <div class="mu-footer__links-col">
+      <h4>Ayuda</h4>
+      <ul class="mu-links">
+        <li><a href="/faq">Preguntas frecuentes</a></li>
+        <li><a href="/envios">Envíos</a></li>
+        <li><a href="/contacto">Contacto</a></li>
+      </ul>
+    </div>
+
+    <div class="mu-footer__newsletter-col">
+      <h4>Recibí novedades</h4>
+      <p class="mu-small">Suscribite y te avisamos sobre lanzamientos y ofertas.</p>
+      <form class="mu-newsletter" action="#" method="post" onsubmit="event.preventDefault(); alert('Gracias por suscribirte');">
+        <label for="mu-news-email" class="sr-only">Email</label>
+        <input id="mu-news-email" class="mu-news-input" type="email" placeholder="tu@correo.com" required />
+        <button class="mu-news-button" type="submit">Suscribirse</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="mu-footer__bottom">
+    <div class="mu-footer__copyright">© Mate Único — Todos los derechos reservados.</div>
+  </div>
+</footer>
+
+<!-- Nota: enlaces y rutas son ejemplos; adáptalos a tu enrutador. -->

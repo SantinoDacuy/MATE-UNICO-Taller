@@ -1,0 +1,1184 @@
+/* HomePage/Login Specific Styles */
+
+/* ==================================================================== */
+/* ESTILOS ESPECÍFICOS DE PÁGINA DE LOGIN (HomePage.jsx) */
+/* Diseño de Alto Nivel Centrado (Mate Dramático) */
+/* ==================================================================== */
+
+.login-full-screen-bg {
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    
+    /* Configuración para la imagen de fondo dramática */
+    background-color: #000; /* Fondo base negro */
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed; /* Efecto parallax sutil */
+    
+    /* Efecto de desenfoque y oscurecimiento sobre la imagen (si se usa) */
+    position: relative;
+    z-index: 1; /* Para que la tarjeta flote */
+    overflow: hidden;
+}
+
+/* Overlay oscuro con desenfoque (blur) para el fondo */
+.login-full-screen-bg::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        135deg,
+        rgba(0, 0, 0, 0.8) 0%,
+        rgba(0, 0, 0, 0.75) 50%,
+        rgba(0, 0, 0, 0.8) 100%
+    ); /* Gradiente sutil para más profundidad */
+    backdrop-filter: blur(10px); /* Aplica el desenfoque, ¡efecto moderno! */
+    z-index: 2;
+}
+
+/* Contenedor principal para centrar la tarjeta */
+.login-card-container {
+    position: relative;
+    z-index: 3; /* Asegura que el contenido esté sobre el overlay */
+    width: 90%;
+    max-width: 450px;
+    padding: 20px;
+    text-align: center;
+    animation: fadeInUp 0.8s ease-out;
+}
+
+/* Animación de entrada suave */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Logo Superior (Alineado con el contenido de la tarjeta) */
+.login-logo-top {
+    margin-bottom: 35px;
+    padding: 20px 0;
+}
+
+.logo-text-accent {
+    font-family: 'Montserrat Alternates', sans-serif;
+    font-size: 2.1rem;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 1.5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3),
+                 0 0 20px rgba(255, 255, 255, 0.1);
+    animation: fadeInScale 1s ease-out 0.3s both;
+    position: relative;
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.logo-inline {
+    height: 2.1em;
+    width: auto;
+    vertical-align: middle;
+    display: inline-block;
+    margin: 0 4px;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4))
+            drop-shadow(0 0 15px rgba(255, 255, 255, 0.2));
+    position: relative;
+    top: -2px; /* Ajuste fino de alineación vertical */
+}
+
+.logo-text-accent:hover .logo-inline {
+    transform: scale(1.15) rotate(8deg) translateY(-2px);
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5))
+            drop-shadow(0 0 20px rgba(255, 255, 255, 0.3));
+}
+
+/* Efecto sutil de brillo en el logo al hover */
+.logo-text-accent:hover {
+    text-shadow: 0 2px 15px rgba(0, 0, 0, 0.4),
+                 0 0 30px rgba(255, 255, 255, 0.15);
+    transform: translateY(-1px);
+    transition: all 0.3s ease;
+}
+
+.login-logo-img {
+    height: 60px;
+    width: auto;
+}
+
+/* Tarjeta de Login (El elemento flotante) */
+.login-card {
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.1) 0%,
+        rgba(255, 255, 255, 0.05) 100%
+    ); /* Gradiente sutil para más profundidad */
+    backdrop-filter: blur(20px) saturate(180%); /* Desenfoque sutil mejorado */
+    border-radius: 20px;
+    padding: 50px 45px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4), 
+                0 0 0 1px rgba(255, 255, 255, 0.1) inset,
+                0 0 60px rgba(255, 255, 255, 0.05); /* Sombra dramática mejorada con glow */
+    border: 1px solid rgba(255, 255, 255, 0.18); /* Borde sutil mejorado */
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+.login-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 20px;
+    padding: 1px;
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.2),
+        rgba(255, 255, 255, 0.05),
+        rgba(255, 255, 255, 0.2)
+    );
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+
+.login-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 48px 0 rgba(0, 0, 0, 0.5), 
+                0 0 0 1px rgba(255, 255, 255, 0.2) inset,
+                0 0 80px rgba(255, 255, 255, 0.08);
+}
+
+.login-card:hover::before {
+    opacity: 1;
+}
+
+.login-title-centered {
+    font-family: 'Montserrat Alternates', sans-serif;
+    font-size: 2.2rem;
+    font-weight: 400;
+    margin-bottom: 35px;
+    color: #fff;
+    letter-spacing: 0.5px;
+    line-height: 1.3;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Botón de Google de Alto Nivel */
+.login-btn-google-pro {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f8f8 100%);
+    color: #000;
+    border: none;
+    padding: 16px 25px;
+    width: 100%;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 32px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15),
+                0 0 0 1px rgba(0, 0, 0, 0.05) inset;
+    font-family: 'Montserrat Alternates', sans-serif;
+    letter-spacing: 0.3px;
+    position: relative;
+    overflow: hidden;
+}
+
+.login-btn-google-pro::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    transition: left 0.5s;
+}
+
+.login-btn-google-pro:hover::before {
+    left: 100%;
+}
+
+.login-btn-google-pro:hover {
+    background: linear-gradient(135deg, #f8f8f8 0%, #ffffff 100%);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(255, 255, 255, 0.35),
+                0 0 0 1px rgba(0, 0, 0, 0.05) inset;
+}
+
+.login-btn-google-pro:active {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.login-btn-google-pro:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.5);
+    outline-offset: 2px;
+}
+
+/* Icono 'G' estilizado (reemplaza al logo feo) */
+.google-icon-pro {
+    font-weight: 700;
+    font-size: 1.3rem;
+    color: #000; /* Negro para que resalte sobre el blanco del botón */
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    line-height: 1;
+}
+
+/* Separador "o" */
+.login-separator {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    margin: 25px 0;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: 500;
+    letter-spacing: 1px;
+}
+
+.login-separator::before,
+.login-separator::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.2), transparent);
+    margin: 0 12px;
+}
+
+/* Iconos Sociales */
+.login-social-icons-pro {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 40px;
+}
+
+.social-icon-pro {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #fff;
+    text-decoration: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+}
+
+.social-icon-pro svg {
+    width: 22px;
+    height: 22px;
+    transition: transform 0.3s ease;
+    z-index: 1;
+    position: relative;
+}
+
+.social-icon-pro:hover {
+    transform: translateY(-4px) scale(1.08);
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.social-icon-pro:hover svg {
+    transform: scale(1.1);
+}
+
+/* Facebook - Azul */
+.social-icon-pro.facebook-bg:hover {
+    background-color: rgba(24, 119, 242, 0.9);
+    border-color: rgba(24, 119, 242, 0.5);
+    box-shadow: 0 6px 20px rgba(24, 119, 242, 0.4);
+}
+
+/* Instagram - Gradiente rosa/morado */
+.social-icon-pro.instagram-bg:hover {
+    background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+    border-color: rgba(225, 48, 108, 0.5);
+    box-shadow: 0 6px 20px rgba(225, 48, 108, 0.4);
+}
+
+/* LinkedIn - Azul profesional */
+.social-icon-pro.linkedin-bg:hover {
+    background-color: rgba(0, 119, 181, 0.9);
+    border-color: rgba(0, 119, 181, 0.5);
+    box-shadow: 0 6px 20px rgba(0, 119, 181, 0.4);
+}
+
+.social-icon-pro:active {
+    transform: translateY(-2px) scale(1.05);
+}
+
+.social-icon-pro:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.5);
+    outline-offset: 2px;
+}
+
+.login-welcome-text-pro {
+    font-family: 'Montserrat Alternates', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.75);
+    line-height: 1.6;
+    letter-spacing: 0.3px;
+    margin-top: 10px;
+}
+
+.debug-link-centered {
+    margin-top: 35px;
+    display: inline-block;
+    color: rgba(255, 255, 255, 0.6);
+    text-decoration: none;
+    font-size: 0.85rem;
+    z-index: 3;
+    position: relative;
+    transition: all 0.3s ease;
+    font-family: 'Montserrat Alternates', sans-serif;
+    font-weight: 400;
+    padding: 8px 16px;
+    border-radius: 6px;
+}
+
+.debug-link-centered:hover {
+    color: rgba(255, 255, 255, 0.9);
+    background-color: rgba(255, 255, 255, 0.05);
+    transform: translateX(5px);
+}
+
+.debug-link-centered:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.5);
+    outline-offset: 2px;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .login-full-screen-bg::before {
+        backdrop-filter: blur(4px); 
+    }
+    .login-card {
+        padding: 30px 20px;
+    }
+    .login-card-container {
+        padding: 10px;
+    }
+    .login-title-centered {
+        font-size: 1.8rem;
+    }
+}
+
+
+/* --- PRODUCT SECTION --- */
+.product-detail {
+  display: flex;
+  gap: 50px;
+  margin-bottom: 80px;
+}
+
+.product-images-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 15px;
+}
+
+.img-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.product-info {
+  flex: 0.8;
+  position: relative;
+  text-align: left;
+}
+
+.product-info h1 {
+  font-size: 2rem;
+  margin-bottom: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.wishlist-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.description {
+  line-height: 1.6;
+  color: #333;
+  margin-bottom: 30px;
+  font-size: 0.95rem;
+}
+
+/* Selectors */
+.selectors {
+  display: flex;
+  gap: 40px;
+  margin-bottom: 20px;
+}
+
+.selector-group label {
+  display: block;
+  font-size: 0.8rem;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.qty-input {
+  display: flex;
+  border: 1px solid #ccc;
+  padding: 5px;
+  width: 100px;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.qty-input button {
+  background: none;
+  border: none;
+  padding: 0 10px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.color-options {
+  display: flex;
+  gap: 10px;
+}
+
+.color-circle {
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.color-circle.black { background-color: #000; }
+.color-circle.brown { background-color: #8B4513; }
+.color-circle.selected { border-color: #ccc; box-shadow: 0 0 0 2px #fff, 0 0 0 3px #000; }
+
+/* Engraving */
+.engraving-section {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.engraving-section input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ccc;
+}
+
+.btn-dark-small {
+  background: #1a1a1a;
+  color: #fff;
+  border: none;
+  padding: 0 20px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.btn-primary-block {
+  width: 100%;
+  background: #111;
+  color: #fff;
+  padding: 15px;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  margin-top: 10px;
+}
+
+/* --- REVIEWS SECTION --- */
+.reviews-section {
+  margin-top: 60px;
+  border-top: 1px solid #eee;
+  padding-top: 40px;
+  position: relative;
+  overflow: hidden;
+  text-align: left;
+}
+
+.reviews-section h2 {
+  font-size: 1.8rem;
+  margin-bottom: 40px;
+}
+
+.reviews-container {
+  display: flex;
+  justify-content: space-between;
+}
+
+.review-list {
+  flex: 2;
+}
+
+.review-item {
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.review-item:last-child {
+  border-bottom: none;
+}
+
+.stars {
+  color: #ffc107;
+  margin-bottom: 5px;
+  letter-spacing: 2px;
+}
+
+.review-item h3 {
+  font-size: 1rem;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.review-item p {
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.review-meta-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  padding-top: 5px;
+}
+
+.meta-item {
+  margin-bottom: 75px;
+  font-size: 0.75rem;
+}
+
+.meta-item .date {
+  display: block;
+  color: #999;
+  margin-bottom: 2px;
+}
+
+.meta-item .user {
+  font-weight: bold;
+}
+
+/* Imagen de hoja de fondo (decorativa) */
+.bg-leaf-decoration {
+  position: absolute;
+  right: -50px;
+  bottom: -50px;
+  width: 400px;
+  height: 400px;
+  background-color: #eaf2e3;
+  background-repeat: no-repeat;
+  background-size: contain;
+  opacity: 0.3;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: 50%;
+}
+
+/* --- SIMILAR PRODUCTS --- */
+.similar-products {
+  margin-top: 60px;
+  margin-bottom: 80px;
+  text-align: left;
+}
+
+.similar-products h2 {
+  font-size: 2.5rem;
+  line-height: 1.1;
+  margin-bottom: 30px;
+}
+
+.products-carousel {
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  padding-bottom: 20px;
+}
+
+.product-card {
+  min-width: 200px;
+  height: 280px;
+  position: relative;
+  background: #f4f4f4;
+}
+
+.product-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.product-placeholder {
+  width: 100%;
+  height: 100%;
+  background-color: #e0d6c5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #333;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.card-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0,0,0,0.8);
+  color: #fff;
+  padding: 10px;
+  text-align: center;
+  font-size: 0.8rem;
+}
+
+/* --- FOOTER --- */
+.footer {
+  background-color: #000;
+  color: #fff;
+  padding: 60px 20px;
+  font-size: 0.8rem;
+  text-align: left;
+}
+
+.footer-cols {
+  display: flex;
+  justify-content: space-between;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.col h4 {
+  margin-bottom: 20px;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+}
+
+.col ul {
+  list-style: none;
+}
+
+.col ul li {
+  margin-bottom: 10px;
+  color: #ccc;
+  cursor: pointer;
+}
+
+.center-col {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.footer-logo {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+.copyright {
+  color: #666;
+  font-size: 0.7rem;
+}
+
+.right-col {
+  text-align: right;
+}
+
+.right-col p {
+  color: #ccc;
+  margin-bottom: 5px;
+}
+
+.socials {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* Responsive básico (Página de Producto) */
+@media (max-width: 768px) {
+  .product-detail, .reviews-container, .footer-cols {
+    flex-direction: column;
+  }
+  .review-meta-column { display: none; }
+  .right-col { text-align: center; }
+  .socials { justify-content: center; }
+}
+
+/* ==================================================================== */
+/* ------------------------ ESTILOS ESPECÍFICOS DE PÁGINA DE LOGIN (HomePage.jsx) ------------------------ */
+/* ------------------------ Diseño de Alto Nivel Centrado (Mate Dramático) ------------------------ */
+/* ==================================================================== */
+
+.login-full-screen-bg {
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    
+    /* Configuración para la imagen de fondo dramática */
+    background-color: #000; /* Fondo base negro */
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed; /* Efecto parallax sutil */
+    
+    /* Efecto de desenfoque y oscurecimiento sobre la imagen (si se usa) */
+    position: relative;
+    z-index: 1; /* Para que la tarjeta flote */
+    overflow: hidden;
+}
+
+/* Overlay oscuro con desenfoque (blur) para el fondo */
+.login-full-screen-bg::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        135deg,
+        rgba(0, 0, 0, 0.8) 0%,
+        rgba(0, 0, 0, 0.75) 50%,
+        rgba(0, 0, 0, 0.8) 100%
+    ); /* Gradiente sutil para más profundidad */
+    backdrop-filter: blur(10px); /* Aplica el desenfoque, ¡efecto moderno! */
+    z-index: 2;
+}
+
+/* Contenedor principal para centrar la tarjeta */
+.login-card-container {
+    position: relative;
+    z-index: 3; /* Asegura que el contenido esté sobre el overlay */
+    width: 90%;
+    max-width: 450px;
+    padding: 20px;
+    text-align: center;
+    animation: fadeInUp 0.8s ease-out;
+}
+
+/* Animación de entrada suave */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Logo Superior (Alineado con el contenido de la tarjeta) */
+.login-logo-top {
+    margin-bottom: 35px;
+    padding: 20px 0;
+}
+
+.logo-text-accent {
+    font-family: 'Montserrat Alternates', sans-serif;
+    font-size: 2.1rem;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 1.5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3),
+                 0 0 20px rgba(255, 255, 255, 0.1);
+    animation: fadeInScale 1s ease-out 0.3s both;
+    position: relative;
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.logo-inline {
+    height: 2.1em;
+    width: auto;
+    vertical-align: middle;
+    display: inline-block;
+    margin: 0 4px;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4))
+            drop-shadow(0 0 15px rgba(255, 255, 255, 0.2));
+    position: relative;
+    top: -2px; /* Ajuste fino de alineación vertical */
+}
+
+.logo-text-accent:hover .logo-inline {
+    transform: scale(1.15) rotate(8deg) translateY(-2px);
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5))
+            drop-shadow(0 0 20px rgba(255, 255, 255, 0.3));
+}
+
+/* Efecto sutil de brillo en el logo al hover */
+.logo-text-accent:hover {
+    text-shadow: 0 2px 15px rgba(0, 0, 0, 0.4),
+                 0 0 30px rgba(255, 255, 255, 0.15);
+    transform: translateY(-1px);
+    transition: all 0.3s ease;
+}
+
+.login-logo-img {
+    height: 60px;
+    width: auto;
+}
+
+/* Tarjeta de Login (El elemento flotante) */
+.login-card {
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.1) 0%,
+        rgba(255, 255, 255, 0.05) 100%
+    ); /* Gradiente sutil para más profundidad */
+    backdrop-filter: blur(20px) saturate(180%); /* Desenfoque sutil mejorado */
+    border-radius: 20px;
+    padding: 50px 45px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4), 
+                0 0 0 1px rgba(255, 255, 255, 0.1) inset,
+                0 0 60px rgba(255, 255, 255, 0.05); /* Sombra dramática mejorada con glow */
+    border: 1px solid rgba(255, 255, 255, 0.18); /* Borde sutil mejorado */
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+.login-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 20px;
+    padding: 1px;
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.2),
+        rgba(255, 255, 255, 0.05),
+        rgba(255, 255, 255, 0.2)
+    );
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+
+.login-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 48px 0 rgba(0, 0, 0, 0.5), 
+                0 0 0 1px rgba(255, 255, 255, 0.2) inset,
+                0 0 80px rgba(255, 255, 255, 0.08);
+}
+
+.login-card:hover::before {
+    opacity: 1;
+}
+
+.login-title-centered {
+    font-family: 'Montserrat Alternates', sans-serif;
+    font-size: 2.2rem;
+    font-weight: 400;
+    margin-bottom: 35px;
+    color: #fff;
+    letter-spacing: 0.5px;
+    line-height: 1.3;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Botón de Google de Alto Nivel */
+.login-btn-google-pro {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f8f8 100%);
+    color: #000;
+    border: none;
+    padding: 16px 25px;
+    width: 100%;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 32px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15),
+                0 0 0 1px rgba(0, 0, 0, 0.05) inset;
+    font-family: 'Montserrat Alternates', sans-serif;
+    letter-spacing: 0.3px;
+    position: relative;
+    overflow: hidden;
+}
+
+.login-btn-google-pro::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    transition: left 0.5s;
+}
+
+.login-btn-google-pro:hover::before {
+    left: 100%;
+}
+
+.login-btn-google-pro:hover {
+    background: linear-gradient(135deg, #f8f8f8 0%, #ffffff 100%);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(255, 255, 255, 0.35),
+                0 0 0 1px rgba(0, 0, 0, 0.05) inset;
+}
+
+.login-btn-google-pro:active {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.login-btn-google-pro:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.5);
+    outline-offset: 2px;
+}
+
+/* Icono 'G' estilizado (reemplaza al logo feo) */
+.google-icon-pro {
+    font-weight: 700;
+    font-size: 1.3rem;
+    color: #000; /* Negro para que resalte sobre el blanco del botón */
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    line-height: 1;
+}
+
+/* Separador "o" */
+.login-separator {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    margin: 25px 0;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: 500;
+    letter-spacing: 1px;
+}
+
+.login-separator::before,
+.login-separator::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.2), transparent);
+    margin: 0 12px;
+}
+
+
+/* Iconos Sociales */
+.login-social-icons-pro {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 40px;
+}
+
+.social-icon-pro {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #fff;
+    text-decoration: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+}
+
+.social-icon-pro svg {
+    width: 22px;
+    height: 22px;
+    transition: transform 0.3s ease;
+    z-index: 1;
+    position: relative;
+}
+
+.social-icon-pro:hover {
+    transform: translateY(-4px) scale(1.08);
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.social-icon-pro:hover svg {
+    transform: scale(1.1);
+}
+
+/* Facebook - Azul */
+.social-icon-pro.facebook-bg:hover {
+    background-color: rgba(24, 119, 242, 0.9);
+    border-color: rgba(24, 119, 242, 0.5);
+    box-shadow: 0 6px 20px rgba(24, 119, 242, 0.4);
+}
+
+/* Instagram - Gradiente rosa/morado */
+.social-icon-pro.instagram-bg:hover {
+    background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+    border-color: rgba(225, 48, 108, 0.5);
+    box-shadow: 0 6px 20px rgba(225, 48, 108, 0.4);
+}
+
+/* LinkedIn - Azul profesional */
+.social-icon-pro.linkedin-bg:hover {
+    background-color: rgba(0, 119, 181, 0.9);
+    border-color: rgba(0, 119, 181, 0.5);
+    box-shadow: 0 6px 20px rgba(0, 119, 181, 0.4);
+}
+
+.social-icon-pro:active {
+    transform: translateY(-2px) scale(1.05);
+}
+
+.social-icon-pro:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.5);
+    outline-offset: 2px;
+}
+
+.login-welcome-text-pro {
+    font-family: 'Montserrat Alternates', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.75);
+    line-height: 1.6;
+    letter-spacing: 0.3px;
+    margin-top: 10px;
+}
+
+.debug-link-centered {
+    margin-top: 35px;
+    display: inline-block;
+    color: rgba(255, 255, 255, 0.6);
+    text-decoration: none;
+    font-size: 0.85rem;
+    z-index: 3;
+    position: relative;
+    transition: all 0.3s ease;
+    font-family: 'Montserrat Alternates', sans-serif;
+    font-weight: 400;
+    padding: 8px 16px;
+    border-radius: 6px;
+}
+
+.debug-link-centered:hover {
+    color: rgba(255, 255, 255, 0.9);
+    background-color: rgba(255, 255, 255, 0.05);
+    transform: translateX(5px);
+}
+
+.debug-link-centered:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.5);
+    outline-offset: 2px;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .login-full-screen-bg::before {
+        backdrop-filter: blur(4px); 
+    }
+    .login-card {
+        padding: 30px 20px;
+    }
+    .login-card-container {
+        padding: 10px;
+    }
+    .login-title-centered {
+        font-size: 1.8rem;
+    }
+}
