@@ -7,14 +7,13 @@ const CheckoutSuccess = () => {
 
   useEffect(() => {
     // load header/footer fragments from /src/components
-    fetch('/src/components/header.html')
-      .then((r) => r.text())
-      .then(setHeaderHtml)
-      .catch(() => setHeaderHtml(''));
-    fetch('/src/components/footer.html')
-      .then((r) => r.text())
-      .then(setFooterHtml)
-      .catch(() => setFooterHtml(''));
+    Promise.all([
+      fetch('/src/components/header.html').then(r => r.text()).catch(() => ''),
+      fetch('/src/components/footer.html').then(r => r.text()).catch(() => '')
+    ]).then(([header, footer]) => {
+      setHeaderHtml(header);
+      setFooterHtml(footer);
+    });
 
     // ensure styles for components are loaded
     if (!document.querySelector('link[href="/src/components/styles.css"]')) {

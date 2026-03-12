@@ -121,86 +121,122 @@ app.post('/auth/google', async (req, res) => {
                 // also save a minimal user object in session for fallback
                 req.session.user = { id: userId, email, nombre, apellido, picture: foto };
                 console.log('User logged in, id:', userId);
-                /*
-                =================================================
-                RUTA: OBTENER/ACTUALIZAR PERFIL DEL USUARIO
-                GET  /api/user/me  => devuelve datos del usuario en sesión (intenta DB, si falla usa sesión)
-                POST /api/user/me  => actualiza campos editables (nombre, apellido, telefono, calle, numero)
-                =================================================
-                */
-                app.get('/api/user/me', async (req, res) => {
-                    if (!req.session || !req.session.userId) {
-                        // if session has fallback user
-                        if (req.session && req.session.user) return res.json({ loggedIn: true, user: req.session.user });
-                        return res.status(401).json({ loggedIn: false });
-                    }
-                    try {
-                        const { rows } = await db.query('SELECT id, email, nombre, apellido, telefono, calle, numero, foto_url, favoritos_json FROM Usuario WHERE id = $1', [req.session.userId]);
-                        if (!rows || rows.length === 0) return res.status(404).json({ loggedIn: false });
-                        const user = rows[0];
-                        // normalize foto_url field name to picture for frontend
-                        user.picture = user.foto_url || (req.session.user && req.session.user.picture) || null;
-                        // parse favoritos_json into favoritos array if present
-                        try {
-                            user.favoritos = user.favoritos_json ? JSON.parse(user.favoritos_json) : [];
-                            delete user.favoritos_json;
-                        } catch (e) {
-                            user.favoritos = [];
-                        }
-                        return res.json({ loggedIn: true, user });
-                    } catch (err) {
-                        console.error('Error fetching user from DB:', err);
-                        // fallback to session user if available
-                        if (req.session && req.session.user) return res.json({ loggedIn: true, user: req.session.user });
-                        return res.status(500).json({ loggedIn: false });
-                    }
-                });
-
-                app.post('/api/user/me', async (req, res) => {
-                    if (!req.session || !req.session.userId) return res.status(401).json({ success: false });
-                    const { nombre, apellido, telefono, calle, numero, picture } = req.body;
-                    try {
-                        // try to update foto_url if column exists
-                        try {
-                            await db.query(`UPDATE Usuario SET nombre=$1, apellido=$2, telefono=$3, calle=$4, numero=$5, foto_url=COALESCE($6,foto_url) WHERE id=$7`, [nombre, apellido, telefono, calle, numero, picture || null, req.session.userId]);
-                        } catch (e) {
-                            // column foto_url may not exist; update without it
-                            await db.query(`UPDATE Usuario SET nombre=$1, apellido=$2, telefono=$3, calle=$4, numero=$5 WHERE id=$6`, [nombre, apellido, telefono, calle, numero, req.session.userId]);
-                        }
-                        // refresh session user
-                        req.session.user = { id: req.session.userId, email: req.session.user ? req.session.user.email : null, nombre, apellido, picture };
-                        return res.json({ success: true });
-                    } catch (err) {
-                        console.error('Error updating user:', err);
-                        // fallback: update session only
-                        req.session.user = { ...(req.session.user || {}), nombre, apellido, telefono, calle, numero, picture };
-                        return res.status(500).json({ success: false, error: 'DB update failed, changes saved in session only' });
-                    }
-                });
-
-                /*
-                =================================================
-                RUTA: OBTENER VENTAS DEL USUARIO
-                GET /api/user/me/ventas
-                =================================================
-                */
-                app.get('/api/user/me/ventas', async (req, res) => {
-                    // If session has ventas (seeded), return them
-                    if (req.session && req.session.ventas) return res.json({ success: true, ventas: req.session.ventas });
-                    if (!req.session || !req.session.userId) return res.status(401).json({ success: false });
-                    try {
-                        const { rows } = await db.query('SELECT id, fecha_venta, subtotal, descuento, total, estado, detalle FROM Venta WHERE id_usuario = $1 ORDER BY fecha_venta DESC', [req.session.userId]);
-                        return res.json({ success: true, ventas: rows });
-                    } catch (err) {
-                        console.error('Error fetching ventas:', err);
-                        // fallback to empty
-                        return res.status(500).json({ success: false, ventas: [] });
-                    }
-                });
                 return res.json({ success: true, userId, payload });
     } catch (error) {
         console.error('Error verificando ID token:', error);
         return res.status(401).json({ success: false, error: 'Invalid ID token' });
+    }
+});
+
+/*
+=================================================
+RUTA: OBTENER/ACTUALIZAR PERFIL DEL USUARIO
+GET  /api/user/me  => devuelve datos del usuario en sesión (intenta DB, si falla usa sesión)
+POST /api/user/me  => actualiza campos editables (nombre, apellido, telefono, calle, numero)
+=================================================
+*/
+app.get('/api/user/me', async (req, res) => {
+    if (!req.session || !req.session.userId) {
+        // if session has fallback user
+        if (req.session && req.session.user) return res.json({ loggedIn: true, user: req.session.user });
+        return res.status(401).json({ loggedIn: false });
+    }
+    try {
+        const { rows } = await db.query('SELECT id, email, nombre, apellido, telefono, calle, numero, foto_url, favoritos_json FROM Usuario WHERE id = $1', [req.session.userId]);
+        if (!rows || rows.length === 0) return res.status(404).json({ loggedIn: false });
+        const user = rows[0];
+        // normalize foto_url field name to picture for frontend
+        user.picture = user.foto_url || (req.session.user && req.session.user.picture) || null;
+        // parse favoritos_json into favoritos array if present
+        try {
+            user.favoritos = user.favoritos_json ? JSON.parse(user.favoritos_json) : [];
+            delete user.favoritos_json;
+        } catch (e) {
+            user.favoritos = [];
+        }
+        return res.json({ loggedIn: true, user });
+    } catch (err) {
+        console.error('Error fetching user from DB:', err);
+        // fallback to session user if available
+        if (req.session && req.session.user) return res.json({ loggedIn: true, user: req.session.user });
+        return res.status(500).json({ loggedIn: false });
+    }
+});
+
+app.post('/api/user/me', async (req, res) => {
+    if (!req.session || !req.session.userId) return res.status(401).json({ success: false });
+    const { nombre, apellido, telefono, calle, numero, picture } = req.body;
+    try {
+        // try to update foto_url if column exists
+        try {
+            await db.query(`UPDATE Usuario SET nombre=$1, apellido=$2, telefono=$3, calle=$4, numero=$5, foto_url=COALESCE($6,foto_url) WHERE id=$7`, [nombre, apellido, telefono, calle, numero, picture || null, req.session.userId]);
+        } catch (e) {
+            // column foto_url may not exist; update without it
+            await db.query(`UPDATE Usuario SET nombre=$1, apellido=$2, telefono=$3, calle=$4, numero=$5 WHERE id=$6`, [nombre, apellido, telefono, calle, numero, req.session.userId]);
+        }
+        // refresh session user
+        req.session.user = { id: req.session.userId, email: req.session.user ? req.session.user.email : null, nombre, apellido, picture };
+        return res.json({ success: true });
+    } catch (err) {
+        console.error('Error updating user:', err);
+        // fallback: update session only
+        req.session.user = { ...(req.session.user || {}), nombre, apellido, telefono, calle, numero, picture };
+        return res.status(500).json({ success: false, error: 'DB update failed, changes saved in session only' });
+    }
+});
+
+/*
+=================================================
+RUTA: OBTENER VENTAS DEL USUARIO
+GET /api/user/me/ventas
+=================================================
+*/
+app.get('/api/user/me/ventas', async (req, res) => {
+    // If session has ventas (seeded), return them
+    if (req.session && req.session.ventas) return res.json({ success: true, ventas: req.session.ventas });
+    if (!req.session || !req.session.userId) return res.status(401).json({ success: false });
+    try {
+        // Get ventas with basic info - use simple query to avoid parameter issues
+        const userId = req.session.userId;
+        const ventasQuery = `SELECT id, fecha_venta, subtotal, descuento, total, estado, metodo_pago FROM Venta WHERE id_usuario = ${userId} ORDER BY fecha_venta DESC`;
+        const { rows: ventas } = await db.query(ventasQuery);
+
+        // For each venta, get its details if they exist
+        for (let venta of ventas) {
+            try {
+                const detallesQuery = `SELECT dv.cantidad, dv.precio_unitario, dv.subtotal,
+                           p.material, p.color, p.descripcion,
+                           c.descripcion as combo_desc, c.tipo_combo
+                    FROM Detalle_Venta dv
+                    LEFT JOIN Producto p ON dv.id_producto = p.id
+                    LEFT JOIN Combo c ON dv.id_combo = c.id
+                    WHERE dv.id_venta = ${venta.id}`;
+                const { rows: detalles } = await db.query(detallesQuery);
+
+                // Format details for frontend
+                venta.detalle = detalles.map(d => ({
+                    cantidad: d.cantidad,
+                    precio_unitario: d.precio_unitario,
+                    subtotal: d.subtotal,
+                    producto: d.material ? {
+                        material: d.material,
+                        color: d.color,
+                        descripcion: d.descripcion
+                    } : d.combo_desc ? {
+                        descripcion: d.combo_desc,
+                        tipo_combo: d.tipo_combo
+                    } : null
+                }));
+            } catch (detailErr) {
+                console.error('Error getting details for venta', venta.id, detailErr);
+                venta.detalle = [];
+            }
+        }
+
+        return res.json({ success: true, ventas: ventas });
+    } catch (err) {
+        console.error('Error fetching ventas:', err);
+        return res.status(500).json({ success: false, ventas: [] });
     }
 });
 

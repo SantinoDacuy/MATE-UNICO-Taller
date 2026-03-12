@@ -125,10 +125,22 @@ html, body { height: 100%; margin: 0; font-family: Inter, Arial, sans-serif; col
 .hero-image-container::before { top: 0; }
 .hero-image-container::after { bottom: 0; }
 
-.filters-gallery { display:flex; gap:20px; align-items:flex-start; margin:28px 0; }
+.filters-gallery { display:flex; gap:20px; align-items:flex-start; margin:28px 0; position:relative; }
 .filters { width:280px; background:var(--color-gray-filter); padding:16px; border-radius:8px; }
 .filters-gallery.no-filters { justify-content:center; }
 .gallery.fullwidth { width:100%; }
+
+
+/* overlay inserted when panel open, placed in FilterPanel.css but include here for safety */
+.filter-overlay {
+  position: fixed;
+  top:0;
+  left:0;
+  right:0;
+  bottom:0;
+  background: rgba(0,0,0,0.3);
+  z-index: 900;
+}
 .gallery-row { max-width:1200px; margin:0 auto; }
 .filters .filters-header { display:flex; justify-content:space-between; align-items:center; }
 .filter-group { margin-top:12px; }

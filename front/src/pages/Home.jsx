@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './Home.css';
 import heroImg from '../assets/inicio1.jpg';
 import seller1 from '../assets/camionero1.png';
@@ -7,6 +8,10 @@ import seller3 from '../assets/camionero3.png';
 import carrusel1 from '../assets/carrusel1.jpg';
 import carrusell2 from '../assets/carrusell2.jpg';
 import carrusel3 from '../assets/carrusel3.jpg';
+
+// filtro lateral
+import FilterPanel from '../components/FilterPanel';
+import '../components/FilterPanel.css';
 
 import { useRef } from 'react';
 
@@ -47,6 +52,7 @@ const FiltersAndGallery = () => (
     </div>
   </section>
 );
+
 
 const BestSellers = () => {
   const items = [
@@ -125,17 +131,17 @@ const Help = () => (
 const Home = () => {
   const [headerHtml, setHeaderHtml] = useState('');
   const [footerHtml, setFooterHtml] = useState('');
+  const [filterOpen, setFilterOpen] = useState(false);
 
   useEffect(() => {
     // load header/footer fragments from /src/components
-    fetch('/src/components/header.html')
-      .then((r) => r.text())
-      .then(setHeaderHtml)
-      .catch(() => setHeaderHtml(''));
-    fetch('/src/components/footer.html')
-      .then((r) => r.text())
-      .then(setFooterHtml)
-      .catch(() => setFooterHtml(''));
+    Promise.all([
+      fetch('/src/components/header.html').then(r => r.text()).catch(() => ''),
+      fetch('/src/components/footer.html').then(r => r.text()).catch(() => '')
+    ]).then(([header, footer]) => {
+      setHeaderHtml(header);
+      setFooterHtml(footer);
+    });
 
     // ensure styles for components are loaded
     if (!document.querySelector('link[href="/src/components/styles.css"]')) {
@@ -146,11 +152,96 @@ const Home = () => {
     }
   }, []);
 
+  // watch header-root for insertion of header content and inject filter button
+  useEffect(() => {
+    const container = document.getElementById('header-root');
+    if (!container) return;
+    const insertButton = () => {
+      const rightArea = container.querySelector('.mu-header__right');
+      if (!rightArea) return;
+      let btn = document.getElementById('mu-filter-button');
+      if (!btn) {
+        btn = document.createElement('button');
+        btn.id = 'mu-filter-button';
+        btn.className = 'mu-filter-link';
+        btn.textContent = 'Filtrar';
+        const profileArea = rightArea.querySelector('.mu-profile');
+        if (profileArea) {
+          rightArea.insertBefore(btn, profileArea);
+        } else {
+          rightArea.appendChild(btn);
+        }
+      }
+      btn.style.display = 'inline-block';
+      btn.onclick = () => setFilterOpen(true);
+    };
+
+    const observer = new MutationObserver((mutations) => {
+      insertButton();
+    });
+    observer.observe(container, { childList: true, subtree: true });
+    // attempt immediately in case content already there
+    insertButton();
+    return () => observer.disconnect();
+  }, []);
+
+  // keep the filter button visible even after open/close
+  useEffect(() => {
+    const btn = document.getElementById('mu-filter-button');
+    if (btn) btn.style.display = 'inline-block';
+  }, [filterOpen]);
+
+  // check user login status and update header
+  useEffect(() => {
+    const checkUserStatus = async () => {
+      try {
+        const res = await fetch('http://localhost:3001/api/user/me', { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.loggedIn && data.user) {
+            // Update profile name in header
+            const profileNameEl = document.getElementById('mu-profile-name');
+            if (profileNameEl) {
+              const firstName = (data.user.nombre || 'Usuario').split(' ')[0];
+              profileNameEl.textContent = firstName;
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('Error checking user status:', error);
+      }
+    };
+
+    // Wait for header to load, then check user status
+    const container = document.getElementById('header-root');
+    if (container && container.innerHTML) {
+      checkUserStatus();
+    } else {
+      // If header not loaded yet, wait for it
+      const observer = new MutationObserver(() => {
+        if (container && container.innerHTML) {
+          checkUserStatus();
+          observer.disconnect();
+        }
+      });
+      if (container) {
+        observer.observe(container, { childList: true, subtree: true });
+      }
+    }
+  }, [headerHtml]); // Re-run when headerHtml changes
+
+  const applyFilters = (filters) => {
+    console.log('Filtros aplicados:', filters);
+    setFilterOpen(false);
+  };
+
   return (
     <div className="home-page-container">
       <div id="header-root" dangerouslySetInnerHTML={{ __html: headerHtml }} />
       <main className="home-content">
         <Hero />
+        {filterOpen && <div className="filter-overlay" onClick={() => setFilterOpen(false)} />}
+        <FilterPanel open={filterOpen} onClose={() => setFilterOpen(false)} onApply={applyFilters} />
         <FiltersAndGallery />
         <BestSellers />
         <Carousel images={[carrusel1, carrusell2, carrusel3]} />

@@ -44,6 +44,37 @@
 /* hide badge when count is zero (use data-count attribute) */
 .mu-badge[data-count="0"]{ display:none !important; }
 
+/* filtro: enlace de texto en el header, igual al estilo de "Ingresar" (gris apagado) */
+.mu-filter-link{
+  background:transparent;
+  color:var(--muted); /* mismo gris que el nombre de perfil */
+  border:0;
+  padding:8px 10px;
+  font-size:0.95rem;
+  font-weight:600;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  white-space:nowrap; /* evitar que se parta en varias líneas */
+  flex-shrink:0; /* no reducir y provocar salto de línea */
+  z-index:1100; /* por encima del overlay */
+  margin-right:12px; /* separación respecto a carrito */
+  transition: color .15s ease;
+}
+.mu-filter-link:hover{
+  color:var(--fg); /* en hover sube a color principal como el resto */
+}
+.mu-filter-link::after{
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-right: 1px solid currentColor;
+  border-bottom: 1px solid currentColor;
+  transform: rotate(45deg);
+  margin-left: 6px;
+  vertical-align: middle;
+}
 /* Profile area */
 .mu-profile{ display:flex; align-items:center; gap:8px; }
 .mu-profile-name{ color:var(--muted); margin-left:6px; font-weight:600; font-size:0.92rem; }

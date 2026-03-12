@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './HomePage.css';
 
@@ -10,77 +10,91 @@ import logoImage from '../assets/logo.png';
 
 const HomePage = () => {
   const navigate = useNavigate();
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    if (!googleClientId) return;
+    if (!googleClientId) {
+      setError('Error: Google Client ID no configurado');
+      setIsLoading(false);
+      return;
+    }
 
     const handleCredentialResponse = async (response) => {
-      // Guardar la credencial antes de intentar el fetch
-      const hasCredential = response && response.credential;
+      const token = response.credential;
       
-      try {
-        console.log('Sending credential to backend, length:', hasCredential ? response.credential.length : 0);
-        
-        if (!hasCredential) {
-          console.warn('No credential received from Google');
-          return;
-        }
+      if (!token) {
+        setError('Error: No se recibió token de Google');
+        return;
+      }
 
+      try {
+        // Intentar enviar al backend
         try {
           const res = await fetch('http://localhost:3001/auth/google', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ credential: response.credential }),
+            body: JSON.stringify({ credential: token }),
           });
           
           if (res.ok) {
             const data = await res.json();
-            console.log('Backend /auth/google response:', data);
             if (data && data.success) {
+              // Guardar token en localStorage
+              localStorage.setItem('google_token', token);
               navigate('/');
               return;
             }
           }
         } catch (fetchError) {
-          console.warn('Backend connection failed:', fetchError);
-          // Continuar con la navegación aunque el backend falle
+          console.warn('Backend connection failed, proceeding in offline mode');
         }
         
-        // Si llegamos aquí, el backend falló o no respondió correctamente
-        // Pero si tenemos credencial, navegar de todas formas (modo desarrollo)
-        if (hasCredential) {
-          console.warn('Backend unavailable but proceeding with login (development mode)');
-          navigate('/');
-        }
+        // Modo fallback: guardar token y continuar
+        localStorage.setItem('google_token', token);
+        navigate('/');
       } catch (err) {
-        console.error('Error en handleCredentialResponse:', err);
-        // Si hay credencial válida, navegar de todas formas
-        if (hasCredential) {
-          console.warn('Error occurred but proceeding with login (development mode)');
-          navigate('/');
-        }
+        setError('Error al procesar autenticación');
+        console.error('Error:', err);
       }
     };
 
-    const tryInit = () => {
+    const initGoogle = () => {
       if (window.google && window.google.accounts && window.google.accounts.id) {
-        window.google.accounts.id.initialize({
-          client_id: googleClientId,
-          callback: handleCredentialResponse,
-        });
-        window.google.accounts.id.renderButton(
-          document.getElementById('google-signin-button'),
-          { theme: 'outline', size: 'large', width: '320' }
-        );
+        try {
+          window.google.accounts.id.initialize({
+            client_id: googleClientId,
+            callback: handleCredentialResponse,
+            auto_select: false,
+            cancel_on_tap_outside: true,
+          });
+
+          const button = document.getElementById('google-signin-button');
+          if (button) {
+            window.google.accounts.id.renderButton(button, {
+              type: 'standard',
+              theme: 'outline',
+              size: 'large',
+              width: '320',
+              locale: 'es'
+            });
+            setIsLoading(false);
+          }
+        } catch (err) {
+          setError('Error al inicializar Google Sign-In');
+          console.error('Google init error:', err);
+          setIsLoading(false);
+        }
       } else {
-        setTimeout(tryInit, 300);
+        // Reintentar en 500ms si Google SDK no está listo
+        setTimeout(initGoogle, 500);
       }
     };
 
-    tryInit();
-  }, []);
+    initGoogle();
+  }, [navigate]);
 
   return (
     <div 
@@ -99,7 +113,34 @@ const HomePage = () => {
         <div className="login-card">
           <h1 className="login-title-centered">Iniciar Sesión</h1>
           
-          {/* Botón de Google: el SDK de Google renderiza dentro de este contenedor */}
+          {/* Mensaje de Error */}
+          {error && (
+            <div style={{
+              padding: '12px',
+              marginBottom: '16px',
+              backgroundColor: '#fee',
+              color: '#c33',
+              borderRadius: '6px',
+              fontSize: '14px',
+              border: '1px solid #fcc'
+            }}>
+              {error}
+            </div>
+          )}
+
+          {/* Indicador de Carga */}
+          {isLoading && (
+            <div style={{
+              padding: '16px',
+              textAlign: 'center',
+              color: '#666',
+              fontSize: '14px'
+            }}>
+              Cargando Google Sign-In...
+            </div>
+          )}
+
+          {/* Botón de Google */}
           <div id="google-signin-button" style={{display: 'flex', justifyContent: 'center'}} />
 
           {/* Iconos Sociales */}

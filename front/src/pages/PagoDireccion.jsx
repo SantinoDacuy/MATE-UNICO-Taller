@@ -63,15 +63,13 @@ export default function PagoDireccion() {
   const [footerHtml, setFooterHtml] = useState('');
 
   useEffect(() => {
-    fetch('/src/components/header.html')
-      .then(r => r.text())
-      .then(setHeaderHtml)
-      .catch(() => setHeaderHtml(''));
-
-    fetch('/src/components/footer.html')
-      .then(r => r.text())
-      .then(setFooterHtml)
-      .catch(() => setFooterHtml(''));
+    Promise.all([
+      fetch('/src/components/header.html').then(r => r.text()).catch(() => ''),
+      fetch('/src/components/footer.html').then(r => r.text()).catch(() => '')
+    ]).then(([header, footer]) => {
+      setHeaderHtml(header);
+      setFooterHtml(footer);
+    });
 
     if (!document.querySelector('link[href="/src/components/styles.css"]')) {
       const l = document.createElement('link');

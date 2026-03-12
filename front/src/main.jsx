@@ -67,8 +67,8 @@ function setProfileUI(user) {
   if (!nameEl || !logoutBtn || !profileLink) return;
   if (user && user.loggedIn && user.user) {
     const u = user.user;
-    const display = (u.nombre || '') + (u.apellido ? ' ' + u.apellido : '');
-    nameEl.textContent = display || u.email || 'Perfil';
+    const firstName = (u.nombre || '').split(' ')[0]; // Solo el primer nombre
+    nameEl.textContent = firstName || u.email || 'Perfil';
     nameEl.style.color = 'var(--fg)';
     logoutBtn.style.display = 'inline-block';
     profileLink.href = '/perfil';

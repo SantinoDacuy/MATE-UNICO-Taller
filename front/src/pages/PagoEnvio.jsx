@@ -2,99 +2,110 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './PagoEnvio.css';
 
+// Métodos de envío disponibles
+const SHIPPING_METHODS = [
+  { id: 'oca', name: 'OCA', days: '3-5 Días hábiles' },
+  { id: 'andreani', name: 'Andreani', days: '5-7 Días hábiles' },
+  { id: 'correo-argentino', name: 'Correo Argentino', days: '7-10 Días hábiles' }
+];
+
 const PagoEnvio = () => {
-  const [metodoSeleccionado, setMetodoSeleccionado] = useState('oca');
+  const [metodoSeleccionado, setMetodoSeleccionado] = useState(() => 
+    localStorage.getItem('shippingMethod') || 'oca'
+  );
   const [headerHtml, setHeaderHtml] = useState('');
   const [footerHtml, setFooterHtml] = useState('');
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
+  // Persistir selección en localStorage
   useEffect(() => {
-    // load header/footer fragments from /src/components
-    fetch('/src/components/header.html')
-      .then((r) => r.text())
-      .then(setHeaderHtml)
-      .catch(() => setHeaderHtml(''));
-    fetch('/src/components/footer.html')
-      .then((r) => r.text())
-      .then(setFooterHtml)
-      .catch(() => setFooterHtml(''));
+    localStorage.setItem('shippingMethod', metodoSeleccionado);
+  }, [metodoSeleccionado]);
 
-    // ensure styles for components are loaded
+  // Cargar header/footer una sola vez
+  useEffect(() => {
+    Promise.all([
+      fetch('/src/components/header.html').then(r => r.text()).catch(() => ''),
+      fetch('/src/components/footer.html').then(r => r.text()).catch(() => '')
+    ]).then(([header, footer]) => {
+      setHeaderHtml(header);
+      setFooterHtml(footer);
+    });
+
+    // Cargar estilos del componente una única vez
     if (!document.querySelector('link[href="/src/components/styles.css"]')) {
-      const l = document.createElement('link');
-      l.rel = 'stylesheet';
-      l.href = '/src/components/styles.css';
-      document.head.appendChild(l);
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = '/src/components/styles.css';
+      document.head.appendChild(link);
     }
   }, []);
+
+  const handleContinue = () => {
+    if (!metodoSeleccionado) {
+      setError('Por favor selecciona un método de envío');
+      return;
+    }
+    setError('');
+    navigate('/pago-tarjeta');
+  };
 
   return (
     <div className="pago-envio-page">
       <div id="header-root" dangerouslySetInnerHTML={{ __html: headerHtml }} />
       
       <div className="checkout-container">
-      {/* Breadcrumb */}
-      <nav className="breadcrumb">
-        Home &gt; Carrito
-      </nav>
+        <nav className="breadcrumb">
+          Home &gt; Carrito
+        </nav>
 
-      {/* Stepper (Progreso) */}
-      <div className="stepper">
-        <span className="step">Dirección</span>
-        <div className="line"></div>
-        <span className="step active">Envío</span>
-        <div className="line"></div>
-        <span className="step">Pago</span>
-      </div>
-
-      <main className="content">
-        <h2 className="section-title">Información</h2>
-
-        <div className="options-container">
-          {/* Opción OCA */}
-          <div 
-            className={`shipping-option ${metodoSeleccionado === 'oca' ? 'selected' : ''}`}
-            onClick={() => setMetodoSeleccionado('oca')}
-          >
-            <input 
-              type="checkbox" 
-              checked={metodoSeleccionado === 'oca'} 
-              readOnly 
-            />
-            <div className="option-details">
-              <strong>OCA</strong>
-              <p>3-5 Días hábiles</p>
-            </div>
-          </div>
-
-          {/* Opción Andreani */}
-          <div 
-            className={`shipping-option ${metodoSeleccionado === 'andreani' ? 'selected' : ''}`}
-            onClick={() => setMetodoSeleccionado('andreani')}
-          >
-            <input 
-              type="checkbox" 
-              checked={metodoSeleccionado === 'andreani'} 
-              readOnly 
-            />
-            <div className="option-details">
-              <strong>Andreani</strong>
-              <p>5-7 Días hábiles</p>
-            </div>
-          </div>
+        <div className="stepper">
+          <span className="step">Dirección</span>
+          <div className="line"></div>
+          <span className="step active">Envío</span>
+          <div className="line"></div>
+          <span className="step">Pago</span>
         </div>
 
-        <button 
-          className="btn-continue"
-          onClick={() => navigate('/pago-tarjeta')}
-        >
-          Continuar
-        </button>
-      </main>
+        <main className="content">
+          <h2 className="section-title">Información</h2>
 
-      {/* Decoración de hojas (opcional) */}
-      <div className="leaf-decoration left"></div>
-      <div className="leaf-decoration right"></div>
+          <div className="options-container">
+            {SHIPPING_METHODS.map(method => (
+              <div
+                key={method.id}
+                className={`shipping-option ${metodoSeleccionado === method.id ? 'selected' : ''}`}
+                onClick={() => setMetodoSeleccionado(method.id)}
+                role="radio"
+                aria-checked={metodoSeleccionado === method.id}
+              >
+                <input
+                  type="radio"
+                  name="shipping-method"
+                  value={method.id}
+                  checked={metodoSeleccionado === method.id}
+                  onChange={(e) => setMetodoSeleccionado(e.target.value)}
+                  aria-label={`Seleccionar ${method.name}`}
+                />
+                <div className="option-details">
+                  <strong>{method.name}</strong>
+                  <p>{method.days}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {error && <div className="error-message">{error}</div>}
+
+          <button
+            className="btn-continue"
+            onClick={handleContinue}
+            aria-label="Continuar con el pago"
+          >
+            Continuar
+          </button>
+        </main>
       </div>
       
       <div id="footer-root" dangerouslySetInnerHTML={{ __html: footerHtml }} />

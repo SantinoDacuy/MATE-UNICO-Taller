@@ -101,15 +101,13 @@ const Carrito = () => {
   const [footerHtml, setFooterHtml] = useState('');
 
   useEffect(() => {
-    fetch('/src/components/header.html')
-      .then(r => r.text())
-      .then(setHeaderHtml)
-      .catch(() => setHeaderHtml(''));
-
-    fetch('/src/components/footer.html')
-      .then(r => r.text())
-      .then(setFooterHtml)
-      .catch(() => setFooterHtml(''));
+    Promise.all([
+      fetch('/src/components/header.html').then(r => r.text()).catch(() => ''),
+      fetch('/src/components/footer.html').then(r => r.text()).catch(() => '')
+    ]).then(([header, footer]) => {
+      setHeaderHtml(header);
+      setFooterHtml(footer);
+    });
 
     if (!document.querySelector('link[href="/src/components/styles.css"]')) {
       const l = document.createElement('link');
@@ -181,12 +179,12 @@ const Carrito = () => {
         </div>
 
         <div className="confirmar-contenedor">
-          <div style={{ width: '100%', maxWidth: 420 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div style={{ width: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: 12 }}>
               <div style={{ color: 'var(--muted)' }}>Subtotal</div>
-              <div style={{ fontWeight: 700 }}>{formatPrecio(subtotal)}</div>
+              <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{formatPrecio(subtotal)}</div>
             </div>
-            <button className="btn-confirmar" onClick={() => navigate('/direccion-pago')}>Continuar al pago</button>
+            <button className="btn-confirmar" onClick={() => navigate('/direccion-pago')}>Continuar</button>
           </div>
         </div>
       </main>
