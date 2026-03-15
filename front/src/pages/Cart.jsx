@@ -1,105 +1,23 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import './Cart.css'; // Asegúrate de vincular el CSS
+import { CartContext } from '../context/CartContext'; // <-- CONECTAMOS EL CEREBRO
+import './Cart.css'; // Si tu amigo no hizo el CSS, después le armamos uno rápido.
 
-// Datos iniciales del carrito (simulados)
-const initialProducts = [
-  {
-    id: 1,
-    nombre: "Mate Imperial",
-    color: "Marrón",
-    precio: 32000,
-    cantidad: 1,
-    imagenUrl: "/path/to/mate-imperial-marron.png"
-  },
-  {
-    id: 2,
-    nombre: "Mate Torpedo",
-    color: "Marrón",
-    precio: 25000,
-    cantidad: 1,
-    imagenUrl: "/path/to/mate-torpedo-marron.png"
-  }
-];
-
-const CART_KEY = 'mu_cart_v1';
-
-function readCartFromStorage() {
-  try {
-    const raw = localStorage.getItem(CART_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch (e) {
-    return null;
-  }
-}
-
-function writeCartToStorage(items) {
-  try {
-    localStorage.setItem(CART_KEY, JSON.stringify(items));
-  } catch (e) {
-    // ignore
-  }
-}
-
-function broadcastCartUpdate(count) {
-  try {
-    window.dispatchEvent(new CustomEvent('cart:update', { detail: { count } }));
-  } catch (e) {
-    // ignore
-  }
-}
+// Imagen comodín por si falla la de Strapi
+import imagenComodin from '../assets/camionero1.png';
 
 const Carrito = () => {
-  const [productos, setProductos] = useState(() => {
-    const stored = readCartFromStorage();
-    if (stored && Array.isArray(stored) && stored.length > 0) return stored;
-    return initialProducts;
-  });
-  const [toast, setToast] = useState(null);
+  const navigate = useNavigate();
+  
+  // 1. NOS TRAEMOS TODO DESDE EL CONTEXTO GLOBAL
+  const { cart, removeFromCart, addToCart, totalItems, totalPrice } = useContext(CartContext);
 
-  useEffect(() => {
-    if (!toast) return;
-    const id = setTimeout(() => setToast(null), 2000);
-    return () => clearTimeout(id);
-  }, [toast]);
-
-  const showToast = (msg) => {
-    setToast(msg);
-  };
-
-  const handleEliminar = (id) => {
-    setProductos(prev => {
-      const next = prev.filter(p => p.id !== id);
-      writeCartToStorage(next);
-      broadcastCartUpdate(next.reduce((s, it) => s + it.cantidad, 0));
-      return next;
-    });
-    showToast('Producto eliminado');
-  };
-
-  const handleCambioCantidad = (id, delta) => {
-    setProductos(prev => {
-      const next = prev.map(p => {
-        if (p.id !== id) return p;
-        const nueva = Math.max(1, p.cantidad + delta);
-        return { ...p, cantidad: nueva };
-      });
-      writeCartToStorage(next);
-      broadcastCartUpdate(next.reduce((s, it) => s + it.cantidad, 0));
-      return next;
-    });
-    showToast('Cantidad actualizada');
-  };
-
-  const formatPrecio = (precio) => {
-    return `$${precio.toLocaleString('es-AR')}`;
-  };
-
-  const subtotal = productos.reduce((sum, p) => sum + p.precio * p.cantidad, 0);
+  // Estados para inyectar el diseño de tu compañero
   const [headerHtml, setHeaderHtml] = useState('');
   const [footerHtml, setFooterHtml] = useState('');
+  const [toast, setToast] = useState(null);
 
+  // Cargar Header y Footer
   useEffect(() => {
     Promise.all([
       fetch('/src/components/header.html').then(r => r.text()).catch(() => ''),
@@ -115,12 +33,46 @@ const Carrito = () => {
       l.href = '/src/components/styles.css';
       document.head.appendChild(l);
     }
-    // broadcast initial cart count
-    const initialCount = productos.reduce((s, it) => s + it.cantidad, 0);
-    broadcastCartUpdate(initialCount);
   }, []);
 
-  const navigate = useNavigate();
+  // Actualizar numerito del Header
+  useEffect(() => {
+    const badge = document.getElementById('mu-cart-badge');
+    if (badge) {
+      badge.textContent = totalItems;
+      badge.setAttribute('data-count', totalItems);
+    }
+  }, [totalItems, headerHtml]);
+
+  // Mensaje flotante
+  useEffect(() => {
+    if (!toast) return;
+    const id = setTimeout(() => setToast(null), 2000);
+    return () => clearTimeout(id);
+  }, [toast]);
+
+  const showToast = (msg) => setToast(msg);
+
+  // Manejador de eliminación usando nuestro Contexto
+  const handleEliminar = (producto) => {
+    removeFromCart(producto.id, producto.color, producto.grabado);
+    showToast('Producto eliminado');
+  };
+
+  // Manejador de suma/resta usando nuestro Contexto (reutilizamos addToCart con 1 o -1)
+  const handleCambioCantidad = (producto, delta) => {
+    // Evitamos que baje de 1
+    if (producto.cantidad === 1 && delta === -1) return;
+    
+    // Le pasamos el mismo producto pero con cantidad 1 o -1 para que el contexto lo sume
+    const mockProductParaContexto = { documentId: producto.id }; 
+    addToCart(mockProductParaContexto, delta, producto.color, producto.grabado);
+    showToast('Cantidad actualizada');
+  };
+
+  const formatPrecio = (precio) => {
+    return `$${precio.toLocaleString('es-AR')}`;
+  };
 
   return (
     <div className="carrito-page">
@@ -133,14 +85,26 @@ const Carrito = () => {
         <p className="carrito-subtitulo">¿No estás listo para pagar? Sigue comprando.</p>
 
         <div className="productos-lista">
-          {productos.length === 0 && (
-            <div className="empty-cart">Tu carrito está vacío.</div>
+          
+          {/* SI EL CARRITO ESTÁ VACÍO */}
+          {cart.length === 0 && (
+            <div className="empty-cart">
+              <p>Tu carrito está vacío. 🧉</p>
+              <button 
+                onClick={() => navigate('/')} 
+                style={{marginTop:'20px', padding:'10px 20px', cursor:'pointer', backgroundColor:'#080808', color:'white', border:'none', borderRadius:'5px'}}
+              >
+                Ver Mates
+              </button>
+            </div>
           )}
 
-          {productos.map(producto => (
-            <div key={producto.id} className="producto-item">
+          {/* DIBUJAMOS LOS PRODUCTOS DEL CONTEXTO */}
+          {cart.map((producto, index) => (
+            // Usamos el index en el key por si agrega el mismo mate con distinto color
+            <div key={`${producto.id}-${index}`} className="producto-item">
               <img
-                src={producto.imagenUrl}
+                src={producto.imagen ? `http://localhost:1337${producto.imagen}` : imagenComodin}
                 alt={producto.nombre}
                 className="producto-imagen"
                 loading="lazy"
@@ -149,18 +113,21 @@ const Carrito = () => {
               <div className="producto-detalle">
                 <h2 className="producto-nombre">{producto.nombre}</h2>
                 <p className="producto-color">Color: {producto.color}</p>
+                {producto.grabado && producto.grabado !== 'Sin grabado' && (
+                  <p style={{fontSize: '14px', color: '#666'}}>Grabado: "{producto.grabado}"</p>
+                )}
 
                 <div className="control-cantidad" role="group" aria-label={`Cantidad de ${producto.nombre}`}>
                   <button
                     className="btn-cantidad"
-                    aria-label={`Disminuir cantidad ${producto.nombre}`}
-                    onClick={() => handleCambioCantidad(producto.id, -1)}
+                    aria-label={`Disminuir cantidad`}
+                    onClick={() => handleCambioCantidad(producto, -1)}
                   >-</button>
                   <span className="cantidad-actual">{producto.cantidad}</span>
                   <button
                     className="btn-cantidad"
-                    aria-label={`Aumentar cantidad ${producto.nombre}`}
-                    onClick={() => handleCambioCantidad(producto.id, 1)}
+                    aria-label={`Aumentar cantidad`}
+                    onClick={() => handleCambioCantidad(producto, 1)}
                   >+</button>
                 </div>
 
@@ -170,7 +137,7 @@ const Carrito = () => {
               <button
                 className="btn-eliminar"
                 aria-label={`Eliminar ${producto.nombre}`}
-                onClick={() => handleEliminar(producto.id)}
+                onClick={() => handleEliminar(producto)}
               >
                 Eliminar <span className="eliminar-x">×</span>
               </button>
@@ -178,15 +145,20 @@ const Carrito = () => {
           ))}
         </div>
 
-        <div className="confirmar-contenedor">
-          <div style={{ width: '100%' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: 12 }}>
-              <div style={{ color: 'var(--muted)' }}>Subtotal</div>
-              <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{formatPrecio(subtotal)}</div>
+        {/* TOTAL Y BOTÓN DE CONTINUAR */}
+        {cart.length > 0 && (
+          <div className="confirmar-contenedor">
+            <div style={{ width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: 12 }}>
+                <div style={{ color: 'var(--muted)' }}>Subtotal:</div>
+                <div style={{ fontWeight: 700, fontSize: '1.2rem' }}>{formatPrecio(totalPrice)}</div>
+              </div>
+              <button className="btn-confirmar" onClick={() => navigate('/direccion-pago')}>
+                Continuar al Pago
+              </button>
             </div>
-            <button className="btn-confirmar" onClick={() => navigate('/direccion-pago')}>Continuar</button>
           </div>
-        </div>
+        )}
       </main>
 
       <div id="footer-root" dangerouslySetInnerHTML={{ __html: footerHtml }} />

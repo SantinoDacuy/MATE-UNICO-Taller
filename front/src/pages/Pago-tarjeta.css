@@ -1,0 +1,82 @@
+/* Reutilizamos los estilos base del contenedor y stepper del paso anterior */
+
+.pago-tarjeta-page {
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+}
+
+.payment-section {
+  max-width: 500px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.payment-header {
+  margin-bottom: 20px;
+}
+
+.section-title {
+  font-size: 24px;
+  color: #333;
+  margin: 0;
+}
+
+/* Caja de info de Mercado Pago */
+.mp-info-box {
+  background-color: #f7f9fc;
+  border: 1px solid #e0e6ed;
+  border-radius: 8px;
+  padding: 30px 20px;
+  margin-bottom: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+.mp-logo-large {
+  height: 50px;
+  width: auto;
+}
+
+.mp-info-box p {
+  font-size: 14px;
+  color: #555;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Botón de pago */
+.btn-pay.mp-button {
+  background-color: #080808;
+  color: white;
+  border: none;
+  padding: 15px 80px;
+  font-size: 16px;
+  cursor: pointer;
+  width: 100%;
+  max-width: 600px;
+  margin: 20px auto 0 auto;
+  display: block;
+  transition: background-color 0.2s ease;
+}
+
+.btn-pay.mp-button:hover {
+  background-color: #222;
+}
+
+.btn-pay.mp-button:active {
+  background-color: #0b0b0b;
+}
+
+/* Hojas decorativas */
+.leaf-decoration {
+  position: absolute;
+  bottom: 0;
+  width: 250px;
+  height: 250px;
+  z-index: -1;
+  opacity: 0.6;
+}
+
+.leaf-decoration.left { left: 0; }
+.leaf-decoration.right { right: 0; transform: scaleX(-1); }

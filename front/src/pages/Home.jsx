@@ -1,6 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState, useRef, useContext } from 'react'; // Agregamos useContext
+import { useNavigate, Link } from 'react-router-dom';
+import { CartContext } from '../context/CartContext'; // <-- IMPORTAMOS EL CEREBRO DEL CARRITO
 import './Home.css';
+
+// Importaciones de imágenes
 import heroImg from '../assets/inicio1.jpg';
 import seller1 from '../assets/camionero1.png';
 import seller2 from '../assets/camionero2.png';
@@ -13,68 +16,135 @@ import carrusel3 from '../assets/carrusel3.jpg';
 import FilterPanel from '../components/FilterPanel';
 import '../components/FilterPanel.css';
 
-import { useRef } from 'react';
-
-const Hero = () => (
-  <section className="hero">
-    <div className="hero-left">
-      <div className="hero-image-container">
-        <img 
-          src={heroImg} 
-          alt="Mate Único" 
-          className="hero-image"
-        />
-      </div>
-    </div>
-    <div className="hero-right">
-      <h1>¡Bienvenidos a nuestra Tienda de Mates!</h1>
-      <p>Descubrí un espacio pensado para los amantes del mate. Acá vas a encontrar mates de todo tipo, bombillas, bolsos y accesorios de calidad, ideales para acompañar cada momento de tu día. Queremos que disfrutes de la tradición con estilo y comodidad.</p>
-      <button className="cta">Ver ahora</button>
-    </div>
-  </section>
-);
-
-// Temporarily hide the filters panel — render only the gallery.
-const FiltersAndGallery = () => (
-  <section className="filters-gallery no-filters">
-    <div className="gallery fullwidth">
-        <div className="gallery-row">
-        <div className="product left"><img src={seller1} alt="Mate Izq" /></div>
-        <div className="product center featured">
-          <div className="badge"><span>Nuevo</span><span>Ingreso</span></div>
-          <img src={seller2} alt="Mate Destacado" />
+// --- 1. COMPONENTE HERO ---
+const Hero = () => {
+  const navigate = useNavigate(); // <-- Agregamos esto
+  return (
+    <section className="hero">
+      <div className="hero-left">
+        <div className="hero-image-container">
+          <img src={heroImg} alt="Mate Único" className="hero-image" />
         </div>
-        <div className="product right"><img src={seller3} alt="Mate Der" /></div>
       </div>
-      <div className="gallery-actions">
-        <button className="ver-mas" aria-label="Ver más productos">Ver Más</button>
+      <div className="hero-right">
+        <h1>¡Bienvenidos a nuestra Tienda de Mates!</h1>
+        <p>Descubrí un espacio pensado para los amantes del mate. Acá vas a encontrar mates de todo tipo, bombillas, bolsos y accesorios de calidad, ideales para acompañar cada momento de tu día. Queremos que disfrutes de la tradición con estilo y comodidad.</p>
+        
+        {/* Cambiá el "1" por el ID del mate imperial que quieras mostrar */}
+        <button className="cta" onClick={() => navigate('/producto/wi7cwnvkdxm782iu6vbchsuk')}>Ver ahora</button>
       </div>
-    </div>
-  </section>
-);
+    </section>
+  );
+};
+
+// --- 2. COMPONENTE FILTROS Y GALERÍA ---
+const FiltersAndGallery = () => {
+  const [productosNuevos, setProductosNuevos] = useState([]);
+  const navigate = useNavigate(); // <-- Agregamos esto
+
+  useEffect(() => {
+    fetch('http://localhost:1337/api/productos?populate=*&sort=createdAt:desc')
+      .then((r) => r.json())
+      .then((json) => {
+        setProductosNuevos(json.data.slice(0, 3));
+      })
+      .catch((err) => console.error("Error al traer nuevos ingresos:", err));
+  }, []);
+
+  return (
+    <section className="filters-gallery no-filters">
+      <div className="gallery fullwidth">
+        <div className="gallery-row">
+          {productosNuevos[1] && (
+            <Link to={`/producto/${productosNuevos[1].documentId}`} className="product left">
+              <img 
+                src={productosNuevos[1].imagenes?.length > 0 ? `http://localhost:1337${productosNuevos[1].imagenes[0].url}` : seller1} 
+                alt={productosNuevos[1].nombre} 
+              />
+            </Link>
+          )}
+
+          {productosNuevos[0] && (
+            <Link to={`/producto/${productosNuevos[0].documentId}`} className="product center featured">
+              <div className="badge"><span>Nuevo</span><span>Ingreso</span></div>
+              <img 
+                src={productosNuevos[0].imagenes?.length > 0 ? `http://localhost:1337${productosNuevos[0].imagenes[0].url}` : seller2} 
+                alt={productosNuevos[0].nombre} 
+              />
+            </Link>
+          )}
+
+          {productosNuevos[2] && (
+            <Link to={`/producto/${productosNuevos[2].documentId}`} className="product right">
+              <img 
+                src={productosNuevos[2].imagenes?.length > 0 ? `http://localhost:1337${productosNuevos[2].imagenes[0].url}` : seller3} 
+                alt={productosNuevos[2].nombre} 
+              />
+            </Link>
+          )}
+        </div>
+        <div className="gallery-actions">
+          {/* Botón hacia el catálogo general */}
+          <button className="ver-mas" onClick={() => navigate('/productos')}>Ver Más</button>
+        </div>
+      </div>
+    </section>
+  );
+};
 
 
+
+
+// --- 3. COMPONENTE BEST SELLERS ---
 const BestSellers = () => {
-  const items = [
-    { name: 'Camionero Classic', price: '17.500', img: seller1 },
-    { name: 'Camionero Premium', price: '27.000', img: seller2 },
-    { name: 'Camionero Pro', price: '19.900', img: seller3 }
-  ];
+  const [productos, setProductos] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const navigate = useNavigate(); // <-- Agregamos esto
+
+  useEffect(() => {
+    fetch('http://localhost:1337/api/productos?populate=*')
+      .then((r) => r.json())
+      .then((json) => {
+        setProductos(json.data.slice(0, 3));
+        setCargando(false);
+      })
+      .catch((err) => {
+        console.error("Error al traer los mates:", err);
+        setCargando(false);
+      });
+  }, []);
 
   return (
     <section className="best-sellers">
       <div className="best-sellers-info">
         <h2>Vea nuestros más vendidos</h2>
         <p>Estos son los productos que se ganaron el corazón de nuestros clientes. Perfectos para acompañarte en cualquier momento del día. Anímate a probar los más elegidos de la tienda.</p>
-        <button className="ver-mas-button">Ver Más</button>
+        
+        {/* Botón hacia el catálogo ordenado por más vendidos */}
+        <button className="ver-mas-button" onClick={() => navigate('/productos?sort=mas-vendidos')}>Ver Más</button>
       </div>
       <div className="best-sellers-list">
-        {items.map((it, idx) => (
-          <div className="seller-card" key={idx}>
-            <img src={it.img} alt={it.name} />
-            <div className="seller-meta"><span className="name">{it.name}</span><span className="price">${it.price}</span></div>
-          </div>
-        ))}
+                {cargando ? (
+          <p style={{marginTop: '20px', fontWeight: 'bold'}}>Preparando los mates... 🧉</p>
+        ) : (
+          productos.map((prod) => (
+            <Link 
+              to={`/producto/${prod.documentId}`} 
+              className="seller-card" 
+              key={prod.id} 
+              style={{ textDecoration: 'none', color: 'inherit' }}
+            >
+              <img 
+                src={prod.imagenes && prod.imagenes.length > 0 ? `http://localhost:1337${prod.imagenes[0].url}` : seller1} 
+                alt={prod.nombre} 
+              />
+              <div className="seller-meta">
+                <span className="name">{prod.nombre}</span>
+                <span className="price">${prod.precio}</span>
+              </div>
+            </Link>
+          ))
+        )}
       </div>
     </section>
   );
@@ -132,9 +202,12 @@ const Home = () => {
   const [headerHtml, setHeaderHtml] = useState('');
   const [footerHtml, setFooterHtml] = useState('');
   const [filterOpen, setFilterOpen] = useState(false);
+  const navigate = useNavigate();
+
+  // --- 1. TRAEMOS EL TOTAL DE ÍTEMS DEL CARRITO ---
+  const { totalItems } = useContext(CartContext);
 
   useEffect(() => {
-    // load header/footer fragments from /src/components
     Promise.all([
       fetch('/src/components/header.html').then(r => r.text()).catch(() => ''),
       fetch('/src/components/footer.html').then(r => r.text()).catch(() => '')
@@ -143,7 +216,6 @@ const Home = () => {
       setFooterHtml(footer);
     });
 
-    // ensure styles for components are loaded
     if (!document.querySelector('link[href="/src/components/styles.css"]')) {
       const l = document.createElement('link');
       l.rel = 'stylesheet';
@@ -152,7 +224,15 @@ const Home = () => {
     }
   }, []);
 
-  // watch header-root for insertion of header content and inject filter button
+  // --- 2. MAGIA: ACTUALIZAR EL NÚMERO DEL CARRITO EN EL HOME ---
+  useEffect(() => {
+    const badge = document.getElementById('mu-cart-badge');
+    if (badge) {
+      badge.textContent = totalItems;
+      badge.setAttribute('data-count', totalItems);
+    }
+  }, [totalItems, headerHtml]); // Se ejecuta si cambia el carrito o carga el HTML
+
   useEffect(() => {
     const container = document.getElementById('header-root');
     if (!container) return;
@@ -180,18 +260,15 @@ const Home = () => {
       insertButton();
     });
     observer.observe(container, { childList: true, subtree: true });
-    // attempt immediately in case content already there
     insertButton();
     return () => observer.disconnect();
   }, []);
 
-  // keep the filter button visible even after open/close
   useEffect(() => {
     const btn = document.getElementById('mu-filter-button');
     if (btn) btn.style.display = 'inline-block';
   }, [filterOpen]);
 
-  // check user login status and update header
   useEffect(() => {
     const checkUserStatus = async () => {
       try {
@@ -199,7 +276,6 @@ const Home = () => {
         if (res.ok) {
           const data = await res.json();
           if (data.loggedIn && data.user) {
-            // Update profile name in header
             const profileNameEl = document.getElementById('mu-profile-name');
             if (profileNameEl) {
               const firstName = (data.user.nombre || 'Usuario').split(' ')[0];
@@ -212,12 +288,10 @@ const Home = () => {
       }
     };
 
-    // Wait for header to load, then check user status
     const container = document.getElementById('header-root');
     if (container && container.innerHTML) {
       checkUserStatus();
     } else {
-      // If header not loaded yet, wait for it
       const observer = new MutationObserver(() => {
         if (container && container.innerHTML) {
           checkUserStatus();
@@ -228,10 +302,18 @@ const Home = () => {
         observer.observe(container, { childList: true, subtree: true });
       }
     }
-  }, [headerHtml]); // Re-run when headerHtml changes
+  }, [headerHtml]);
 
-  const applyFilters = (filters) => {
-    console.log('Filtros aplicados:', filters);
+  const applyFilters = (filtrosActivos) => {
+    // Si el usuario eligió filtros, lo mandamos al catálogo pasándole los filtros por la URL
+    if (filtrosActivos && filtrosActivos.length > 0) {
+      // Convertimos el array ['negro', 'imperial'] a un texto 'negro,imperial'
+      const stringFiltros = filtrosActivos.join(','); 
+      navigate(`/productos?f=${stringFiltros}`);
+    } else {
+      // Si tocó "Ver Resultados" sin tildar nada, lo mandamos al catálogo completo
+      navigate('/productos');
+    }
     setFilterOpen(false);
   };
 

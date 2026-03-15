@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import './Pago.tarjeta.css';
+import './Pago-tarjeta.css';
 import mercadoPagoImg from '../assets/mercadoPago.png';
 
 const CheckoutPago = () => {
@@ -17,7 +17,6 @@ const CheckoutPago = () => {
       setFooterHtml(footer);
     });
 
-    // ensure styles for components are loaded
     if (!document.querySelector('link[href="/src/components/styles.css"]')) {
       const l = document.createElement('link');
       l.rel = 'stylesheet';
@@ -45,36 +44,24 @@ const CheckoutPago = () => {
 
       <main className="content payment-section">
         <div className="payment-header">
-          <h2 className="section-title">Detalles de pago</h2>
-          <div className="mercadopago-logo">
-            <img src={mercadoPagoImg} alt="Mercado Pago" />
-          </div>
+          <h2 className="section-title">Medio de pago único</h2>
         </div>
 
-        <form 
-          className="payment-form"
-          onSubmit={(e) => {
-            e.preventDefault();
-            navigate('/final');
-          }}
-        >
-          <input type="text" placeholder="Nombre de titular" className="input-full" />
-          <input type="text" placeholder="Número de tarjeta" className="input-full" />
-          
-          <div className="form-row">
-            <select className="input-select">
-              <option value="">Mes</option>
-              {/* Aquí podrías mapear los meses */}
-            </select>
-            <select className="input-select">
-              <option value="">Año</option>
-              {/* Aquí podrías mapear los años */}
-            </select>
-            <input type="text" placeholder="Código" className="input-code" />
-          </div>
+        {/* Caja de Mercado Pago */}
+        <div className="mp-info-box">
+          <img src={mercadoPagoImg} alt="Mercado Pago" className="mp-logo-large" />
+          <p>
+            Al hacer clic en continuar, serás redirigido a <strong>Mercado Pago</strong>.
+            Podrás usar tu saldo, tarjeta de crédito o débito para completar tu compra.
+          </p>
+        </div>
 
-          <button type="submit" className="btn-pay">Pagar</button>
-        </form>
+        <button 
+          className="btn-pay mp-button" 
+          onClick={() => navigate('/final')} // Por ahora nos lleva a final, luego llamará a la API de MP
+        >
+          Continuar a Mercado Pago
+        </button>
       </main>
 
       {/* Decoración de hojas */}

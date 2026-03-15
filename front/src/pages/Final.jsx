@@ -1,12 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { CartContext } from '../context/CartContext'; // IMPORTAMOS EL CEREBRO
 import './Final.css';
 
 const CheckoutSuccess = () => {
+  const navigate = useNavigate();
+  // Nos traemos la función para vaciar y el total de ítems
+  const { clearCart, totalItems } = useContext(CartContext);
+
   const [headerHtml, setHeaderHtml] = useState('');
   const [footerHtml, setFooterHtml] = useState('');
 
+  // 1. Al montar el componente, VACIAMOS EL CARRITO
   useEffect(() => {
-    // load header/footer fragments from /src/components
+    clearCart();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 2. Cargamos el Header y Footer
+  useEffect(() => {
     Promise.all([
       fetch('/src/components/header.html').then(r => r.text()).catch(() => ''),
       fetch('/src/components/footer.html').then(r => r.text()).catch(() => '')
@@ -15,7 +27,6 @@ const CheckoutSuccess = () => {
       setFooterHtml(footer);
     });
 
-    // ensure styles for components are loaded
     if (!document.querySelector('link[href="/src/components/styles.css"]')) {
       const l = document.createElement('link');
       l.rel = 'stylesheet';
@@ -23,6 +34,15 @@ const CheckoutSuccess = () => {
       document.head.appendChild(l);
     }
   }, []);
+
+  // 3. Actualizamos el número del carrito en el Header inyectado (ahora será 0)
+  useEffect(() => {
+    const badge = document.getElementById('mu-cart-badge');
+    if (badge) {
+      badge.textContent = totalItems;
+      badge.setAttribute('data-count', totalItems);
+    }
+  }, [totalItems, headerHtml]);
 
   return (
     <div className="final-page">
@@ -38,7 +58,7 @@ const CheckoutSuccess = () => {
         </div>
 
         <h1 className="thanks-title">¡MUCHAS GRACIAS!</h1>
-        <h2 className="processing-subtitle">Tu compra esta siendo procesada</h2>
+        <h2 className="processing-subtitle">Tu compra está siendo procesada</h2>
 
         <p className="success-description">
           Revisa tu correo electrónico, te enviaremos los detalles <br />
@@ -46,7 +66,8 @@ const CheckoutSuccess = () => {
           próximas horas.
         </p>
 
-        <button className="btn-home" onClick={() => window.location.href = '/'}>
+        {/* Cambiamos window.location por navigate para que no recargue toda la página */}
+        <button className="btn-home" onClick={() => navigate('/')}>
           Home
         </button>
       </main>

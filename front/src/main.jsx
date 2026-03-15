@@ -19,11 +19,11 @@ function updateCartBadge(count) {
 
 function readCartCountFromStorage() {
   try {
-    const raw = localStorage.getItem('mu_cart_v1');
+    const raw = localStorage.getItem('mateUnicoCart') || localStorage.getItem('mu_cart_v1');
     if (!raw) return 0;
     const items = JSON.parse(raw);
     if (!Array.isArray(items)) return 0;
-    return items.reduce((s, it) => s + (it.cantidad || 0), 0);
+    return items.reduce((s, it) => s + (Number(it.cantidad) || 0), 0);
   } catch (e) { return 0; }
 }
 
@@ -99,6 +99,7 @@ const authInterval = setInterval(async () => {
       }
       // clear client cart and update UI
       localStorage.removeItem('mu_cart_v1');
+      localStorage.removeItem('mateUnicoCart');
       window.dispatchEvent(new CustomEvent('cart:update', { detail: { count: 0 } }));
       // reset profile
       setProfileUI(null);
