@@ -10,24 +10,90 @@ const Productos = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // --- 1. ESTADOS PRINCIPALES ---
+  // --- ESTADOS PRINCIPALES ---
   const [productos, setProductos] = useState([]);
   const [productosFiltrados, setProductosFiltrados] = useState([]);
   const [cargando, setCargando] = useState(true);
-  
   const [orden, setOrden] = useState('recomendados');
   const [filtrosActivos, setFiltrosActivos] = useState([]);
-
   const [headerHtml, setHeaderHtml] = useState('');
   const [footerHtml, setFooterHtml] = useState('');
 
-  // --- 2. EL MICRÓFONO: Escucha la URL apenas entrás ---
+  // =========================================================
+  // 1. CARGAMOS EL DISEÑO (Header y Footer)
+  // =========================================================
+  useEffect(() => {
+    Promise.all([
+      fetch('/src/components/header.html').then(r => r.text()).catch(() => ''),
+      fetch('/src/components/footer.html').then(r => r.text()).catch(() => '')
+    ]).then(([header, footer]) => {
+      setHeaderHtml(header);
+      setFooterHtml(footer);
+    });
+
+    if (!document.querySelector('link[href="/src/components/styles.css"]')) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = '/src/components/styles.css';
+      document.head.appendChild(link);
+    }
+  }, []);
+
+  // =========================================================
+  // 2. EL CEREBRO BLINDADO: Pone tu nombre de forma segura
+  // =========================================================
+  useEffect(() => {
+    if (!headerHtml) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch('http://localhost:3001/api/user/me', { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.loggedIn && data.user) {
+            const profileNameEl = document.getElementById('mu-profile-name');
+            if (profileNameEl) {
+              profileNameEl.textContent = (data.user.nombre || 'Usuario').split(' ')[0];
+            }
+            const btnPerfil = document.getElementById('header-link-perfil');
+            if (btnPerfil) {
+              btnPerfil.onclick = (e) => {
+                e.preventDefault();
+                navigate('/perfil');
+              };
+            }
+          }
+        }
+      } catch (err) {}
+    }, 50);
+
+    return () => clearTimeout(timer);
+  }, [headerHtml, navigate]);
+
+  // =========================================================
+  // 3. ACTUALIZAR NUMERITO DEL CARRITO Y ESCONDER BOTÓN DE FILTRO
+  // =========================================================
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const badge = document.getElementById('mu-cart-badge');
+      if (badge) {
+        badge.textContent = totalItems;
+        badge.setAttribute('data-count', totalItems);
+      }
+      
+      // Escondemos el botón de filtro del Header porque acá tenemos el sidebar
+      const btnFiltroHeader = document.getElementById('mu-filter-button');
+      if (btnFiltroHeader) btnFiltroHeader.style.display = 'none';
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [totalItems, headerHtml]);
+
+  // --- EL MICRÓFONO: Escucha la URL apenas entrás ---
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
     const f = queryParams.get('f');
     const sort = queryParams.get('sort');
 
-    // Si la URL trae filtros desde el Home, tildamos las cajitas automáticamente
     if (f) {
       setFiltrosActivos(f.split(',').map(item => item.trim()));
     } else {
@@ -35,9 +101,9 @@ const Productos = () => {
     }
 
     if (sort) setOrden(sort);
-  }, [location.search]); // Se ejecuta cada vez que la URL cambia
+  }, [location.search]); 
 
-  // --- 3. TRAER MATES DE STRAPI ---
+  // --- TRAER MATES DE STRAPI ---
   useEffect(() => {
     fetch('http://localhost:1337/api/productos?populate=*')
       .then((r) => r.json())
@@ -51,7 +117,7 @@ const Productos = () => {
       });
   }, []);
 
-  // --- 4. MOTOR DE FILTRADO INTELIGENTE ---
+  // --- MOTOR DE FILTRADO INTELIGENTE ---
   useEffect(() => {
     let resultado = [...productos];
     const queryParams = new URLSearchParams(location.search);
@@ -65,7 +131,7 @@ const Productos = () => {
       );
     }
 
-    // B. Checkboxes (Lee las cajitas que se tildaron solas o a mano)
+    // B. Checkboxes
     if (filtrosActivos.length > 0) {
       resultado = resultado.filter(prod => {
         const cumpleColor = 
@@ -98,35 +164,6 @@ const Productos = () => {
     setProductosFiltrados(resultado);
   }, [productos, location.search, filtrosActivos, orden]);
 
-  // --- 5. COMPONENTES VISUALES ---
-  useEffect(() => {
-    Promise.all([
-      fetch('/src/components/header.html').then(r => r.text()).catch(() => ''),
-      fetch('/src/components/footer.html').then(r => r.text()).catch(() => '')
-    ]).then(([header, footer]) => {
-      setHeaderHtml(header);
-      setFooterHtml(footer);
-    });
-
-    if (!document.querySelector('link[href="/src/components/styles.css"]')) {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = '/src/components/styles.css';
-      document.head.appendChild(link);
-    }
-  }, []);
-
-  useEffect(() => {
-    const badge = document.getElementById('mu-cart-badge');
-    if (badge) {
-      badge.textContent = totalItems;
-      badge.setAttribute('data-count', totalItems);
-    }
-    const btnFiltroHeader = document.getElementById('mu-filter-button');
-    if (btnFiltroHeader) btnFiltroHeader.style.display = 'none';
-  }, [totalItems, headerHtml]);
-
-  // Manejador de cajitas si las tocan adentro del Catálogo
   const toggleFiltro = (valor) => {
     setFiltrosActivos(prev => 
       prev.includes(valor) ? prev.filter(f => f !== valor) : [...prev, valor]
@@ -168,7 +205,7 @@ const Productos = () => {
             </div>
           </div>
 
-        <div className="filtro-grupo">
+          <div className="filtro-grupo">
             <h4>Combos</h4>
             <label className="filtro-suelto">
               <input type="checkbox" checked={filtrosActivos.includes('combo_simple')} onChange={() => toggleFiltro('combo_simple')} /> 
@@ -190,12 +227,11 @@ const Productos = () => {
             </div>
           </div>
 
-          {/* Botón para limpiar */}
           {filtrosActivos.length > 0 && (
             <button 
               onClick={() => {
                 setFiltrosActivos([]);
-                navigate('/productos'); // Limpia la URL también
+                navigate('/productos'); 
               }}
               style={{
                 width: '100%', marginTop: '15px', padding: '12px',

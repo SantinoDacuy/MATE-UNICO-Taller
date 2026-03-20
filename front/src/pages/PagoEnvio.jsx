@@ -14,7 +14,6 @@ const SHIPPING_METHODS = [
 const formatPrecio = (precio) => `$${precio.toLocaleString('es-AR')}`;
 
 const PagoEnvio = () => {
-  // TRAEMOS EL DESCUENTO DESDE EL CONTEXTO
   const { cart, removeFromCart, totalPrice, totalItems, descuento } = useContext(CartContext);
   const navigate = useNavigate();
 
@@ -29,13 +28,15 @@ const PagoEnvio = () => {
   const metodoActual = SHIPPING_METHODS.find(m => m.id === metodoSeleccionado);
   const costoEnvio = metodoActual ? metodoActual.cost : 0;
   
-  // EL TOTAL AHORA RESTA EL DESCUENTO GLOBAL
   const total = totalPrice + costoEnvio - descuento;
 
   useEffect(() => {
     localStorage.setItem('shippingMethod', metodoSeleccionado);
   }, [metodoSeleccionado]);
 
+  // =========================================================
+  // 1. CARGAMOS EL DISEÑO (Header y Footer)
+  // =========================================================
   useEffect(() => {
     Promise.all([
       fetch('/src/components/header.html').then(r => r.text()).catch(() => ''),
@@ -53,12 +54,49 @@ const PagoEnvio = () => {
     }
   }, []);
 
+  // =========================================================
+  // 2. EL CEREBRO BLINDADO: Pone tu nombre de forma segura
+  // =========================================================
   useEffect(() => {
-    const badge = document.getElementById('mu-cart-badge');
-    if (badge) {
-      badge.textContent = totalItems;
-      badge.setAttribute('data-count', totalItems);
-    }
+    if (!headerHtml) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch('http://localhost:3001/api/user/me', { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.loggedIn && data.user) {
+            const profileNameEl = document.getElementById('mu-profile-name');
+            if (profileNameEl) {
+              profileNameEl.textContent = (data.user.nombre || 'Usuario').split(' ')[0];
+            }
+            const btnPerfil = document.getElementById('header-link-perfil');
+            if (btnPerfil) {
+              btnPerfil.onclick = (e) => {
+                e.preventDefault();
+                navigate('/perfil');
+              };
+            }
+          }
+        }
+      } catch (err) {}
+    }, 50);
+
+    return () => clearTimeout(timer);
+  }, [headerHtml, navigate]);
+
+  // =========================================================
+  // 3. ACTUALIZAR NUMERITO DEL CARRITO
+  // =========================================================
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const badge = document.getElementById('mu-cart-badge');
+      if (badge) {
+        badge.textContent = totalItems;
+        badge.setAttribute('data-count', totalItems);
+      }
+    }, 50);
+    return () => clearTimeout(timer);
   }, [totalItems, headerHtml]);
 
   const handleContinue = () => {
@@ -108,7 +146,6 @@ const PagoEnvio = () => {
             <div className="resumen-fila"><span className="resumen-label">Subtotal</span><span className="resumen-valor">{formatPrecio(totalPrice)}</span></div>
             <div className="resumen-fila"><span className="resumen-label">Envío ({metodoActual?.name})</span><span className="resumen-valor">{formatPrecio(costoEnvio)}</span></div>
             
-            {/* Si hay descuento, mostramos la fila acá también */}
             {descuento > 0 && (
               <div className="resumen-fila"><span className="resumen-label">Descuento</span><span className="resumen-valor descuento-valor">-{formatPrecio(descuento)}</span></div>
             )}

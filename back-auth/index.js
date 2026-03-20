@@ -110,10 +110,15 @@ app.post('/auth/google', async (req, res) => {
                     }
                 } catch (dbError) {
                     console.error('DB error creating/finding user:', dbError);
-                    return res.status(500).json({ success: false, error: 'Database error' });
-                                // store some profile info in session as fallback
-                                req.session.user = { email: payload.email, nombre, apellido, picture: foto };
-                                return res.status(500).json({ success: false, error: 'Database error' });
+                    
+                    // ¡ELIMINAMOS EL RETURN QUE CORTABA EL CÓDIGO ACÁ!
+                    
+                    // store some profile info in session as fallback
+                    req.session.user = { email: payload.email, nombre, apellido, picture: foto };
+                    
+                    // Y CAMBIAMOS EL STATUS 500 POR UN 200 (json success: true) 
+                    // Para que React sepa que pudimos entrar en modo fallback
+                    return res.json({ success: true, fallback: true, payload });
                 }
 
                 // Guardar userId en la sesión

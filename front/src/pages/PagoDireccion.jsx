@@ -15,15 +15,14 @@ const provinciasYCiudades = {
   'Tucumán': ['San Miguel de Tucumán', 'Yerba Buena', 'Tafí Viejo', 'Concepción', 'Aguilares', 'Monteros', 'Famaillá', 'Lules', 'Banda del Río Salí'],
   'Salta': ['Salta', 'San Salvador de Jujuy', 'Orán', 'Tartagal', 'General Güemes', 'Metán', 'Cafayate', 'Rosario de la Frontera', 'Cerrillos'],
   'Entre Ríos': ['Paraná', 'Concordia', 'Gualeguaychú', 'Concepción del Uruguay', 'Villaguay', 'Colón', 'Federación', 'Nogoyá', 'Victoria']
-  // ... (Podés agregar las que faltan para no hacer largo el código)
 };
 const provincias = Object.keys(provinciasYCiudades);
 
 export default function PagoDireccion() {
-  // TRAEMOS EL DESCUENTO DESDE EL CONTEXTO
   const { cart, removeFromCart, totalPrice, totalItems, descuento, setDescuento } = useContext(CartContext);
   const navigate = useNavigate();
   
+  const [autorizado, setAutorizado] = useState(false);
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
   const [direccion, setDireccion] = useState('');
@@ -32,36 +31,16 @@ export default function PagoDireccion() {
   const [provinciaSeleccionada, setProvinciaSeleccionada] = useState('');
   const [ciudadSeleccionada, setCiudadSeleccionada] = useState('');
   const [guardarInfo, setGuardarInfo] = useState(false); 
-
   const [coupon, setCoupon] = useState('');
   const [toast, setToast] = useState(null);
+  const [headerHtml, setHeaderHtml] = useState('');
+  const [footerHtml, setFooterHtml] = useState('');
 
   const envio = 4000;
   const gravado = 0; 
   const total = totalPrice + envio + gravado - descuento;
 
-  useEffect(() => {
-    const savedData = localStorage.getItem('mateUnicoDireccion');
-    if (savedData) {
-      try {
-        const parsed = JSON.parse(savedData);
-        setNombre(parsed.nombre || '');
-        setApellido(parsed.apellido || '');
-        setDireccion(parsed.direccion || '');
-        setPiso(parsed.piso || '');
-        setCp(parsed.cp || '');
-        setProvinciaSeleccionada(parsed.provincia || '');
-        setCiudadSeleccionada(parsed.ciudad || '');
-        setGuardarInfo(true); 
-      } catch (e) {
-        console.error("Error leyendo info guardada");
-      }
-    }
-  }, []);
-
-  const [headerHtml, setHeaderHtml] = useState('');
-  const [footerHtml, setFooterHtml] = useState('');
-
+  // 1. CARGAR HEADER Y FOOTER
   useEffect(() => {
     Promise.all([
       fetch('/src/components/header.html').then(r => r.text()).catch(() => ''),
@@ -79,12 +58,65 @@ export default function PagoDireccion() {
     }
   }, []);
 
+  // 2. VERIFICAR LOGIN Y ACTUALIZAR HEADER (El Patovica)
   useEffect(() => {
-    const badge = document.getElementById('mu-cart-badge');
-    if (badge) {
-      badge.textContent = totalItems;
-      badge.setAttribute('data-count', totalItems);
+    if (!headerHtml) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch('http://localhost:3001/api/user/me', { credentials: 'include' });
+        if (!res.ok) throw new Error('No autorizado');
+        
+        const data = await res.json();
+        if (data.loggedIn && data.user) {
+          setAutorizado(true);
+          const profileNameEl = document.getElementById('mu-profile-name');
+          if (profileNameEl) profileNameEl.textContent = (data.user.nombre || 'Usuario').split(' ')[0];
+          
+          const btnPerfil = document.getElementById('header-link-perfil');
+          if (btnPerfil) btnPerfil.onclick = (e) => { e.preventDefault(); navigate('/perfil'); };
+        } else {
+          navigate('/login');
+        }
+      } catch (error) {
+        navigate('/login');
+      }
+    }, 50);
+
+    return () => clearTimeout(timer);
+  }, [headerHtml, navigate]);
+
+  // 3. RECUPERAR DATOS GUARDADOS
+  useEffect(() => {
+    if (autorizado) {
+      const savedData = localStorage.getItem('mateUnicoDireccion');
+      if (savedData) {
+        try {
+          const parsed = JSON.parse(savedData);
+          setNombre(parsed.nombre || '');
+          setApellido(parsed.apellido || '');
+          setDireccion(parsed.direccion || '');
+          setPiso(parsed.piso || '');
+          setCp(parsed.cp || '');
+          setProvinciaSeleccionada(parsed.provincia || '');
+          setCiudadSeleccionada(parsed.ciudad || '');
+          setGuardarInfo(true); 
+        } catch (e) {
+          console.error("Error leyendo info guardada");
+        }
+      }
     }
+  }, [autorizado]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const badge = document.getElementById('mu-cart-badge');
+      if (badge) {
+        badge.textContent = totalItems;
+        badge.setAttribute('data-count', totalItems);
+      }
+    }, 50);
+    return () => clearTimeout(timer);
   }, [totalItems, headerHtml]);
 
   useEffect(() => {
@@ -99,28 +131,28 @@ export default function PagoDireccion() {
       setToast('El carrito está vacío');
       return;
     }
-
     if (guardarInfo) {
       const datosDireccion = { nombre, apellido, direccion, piso, cp, provincia: provinciaSeleccionada, ciudad: ciudadSeleccionada };
       localStorage.setItem('mateUnicoDireccion', JSON.stringify(datosDireccion));
     } else {
       localStorage.removeItem('mateUnicoDireccion');
     }
-
     navigate('/pago-envio');
   };
 
   const applyCoupon = () => {
     if (!coupon) return setToast('Ingresa un cupón');
-    setDescuento(10000); // GUARDAMOS EL DESCUENTO EN EL CEREBRO GLOBAL
+    setDescuento(10000);
     setToast('Cupón aplicado con éxito');
     setCoupon('');
   };
 
+  if (!autorizado || !headerHtml) return null;
+
   return (
     <div className="checkout-page">
       <div id="header-root" dangerouslySetInnerHTML={{ __html: headerHtml }} />
-      <div className="page-path">Home &gt; Checkout</div>
+      <div className="page-path" style={{paddingLeft: '50px', paddingTop: '20px'}}>Home &gt; Checkout</div>
 
       <main className="checkout-contenedor-principal">
         <section className="checkout-columna-izquierda">
@@ -155,12 +187,7 @@ export default function PagoDireccion() {
             <div className="resumen-fila"><span className="resumen-label">Subtotal</span><span className="resumen-valor">{formatPrecio(totalPrice)}</span></div>
             <div className="resumen-fila"><span className="resumen-label">Gravado</span><span className="resumen-valor">{formatPrecio(gravado)}</span></div>
             <div className="resumen-fila"><span className="resumen-label">Envío</span><span className="resumen-valor">{formatPrecio(envio)}</span></div>
-            
-            {/* Si hay descuento, mostramos la fila */}
-            {descuento > 0 && (
-              <div className="resumen-fila"><span className="resumen-label">Descuento</span><span className="resumen-valor descuento-valor">-{formatPrecio(descuento)}</span></div>
-            )}
-            
+            {descuento > 0 && <div className="resumen-fila"><span className="resumen-label">Descuento</span><span className="resumen-valor descuento-valor">-{formatPrecio(descuento)}</span></div>}
             <hr className="resumen-separador" />
             <div className="resumen-fila resumen-total"><span className="resumen-label">Total</span><span className="resumen-valor">{formatPrecio(total)}</span></div>
           </div>
@@ -182,7 +209,6 @@ export default function PagoDireccion() {
               <input type="text" placeholder="Nombre" value={nombre} onChange={e => setNombre(e.target.value)} required />
               <input type="text" placeholder="Apellido" value={apellido} onChange={e => setApellido(e.target.value)} required />
             </div>
-            
             <input type="text" placeholder="Dirección (Calle y Número)" value={direccion} onChange={e => setDireccion(e.target.value)} required />
             <input type="text" placeholder="Piso, Depto, etc (opcional)" value={piso} onChange={e => setPiso(e.target.value)} />
             <input type="text" placeholder="Código Postal" value={cp} onChange={e => setCp(e.target.value)} required />

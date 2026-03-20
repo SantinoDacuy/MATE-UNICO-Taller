@@ -1,24 +1,21 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CartContext } from '../context/CartContext'; // IMPORTAMOS EL CEREBRO
+import { CartContext } from '../context/CartContext'; 
 import './Final.css';
 
 const CheckoutSuccess = () => {
   const navigate = useNavigate();
-  // Nos traemos la función para vaciar y el total de ítems
   const { clearCart, totalItems } = useContext(CartContext);
 
   const [headerHtml, setHeaderHtml] = useState('');
   const [footerHtml, setFooterHtml] = useState('');
 
-  // 1. Al montar el componente, VACIAMOS EL CARRITO
+  // =========================================================
+  // 1. VACIAR EL CARRITO Y CARGAR EL DISEÑO (Header y Footer)
+  // =========================================================
   useEffect(() => {
     clearCart();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
-  // 2. Cargamos el Header y Footer
-  useEffect(() => {
     Promise.all([
       fetch('/src/components/header.html').then(r => r.text()).catch(() => ''),
       fetch('/src/components/footer.html').then(r => r.text()).catch(() => '')
@@ -33,15 +30,51 @@ const CheckoutSuccess = () => {
       l.href = '/src/components/styles.css';
       document.head.appendChild(l);
     }
-  }, []);
+  }, [clearCart]);
 
-  // 3. Actualizamos el número del carrito en el Header inyectado (ahora será 0)
+  // =========================================================
+  // 2. EL CEREBRO BLINDADO: Pone tu nombre de forma segura
+  // =========================================================
   useEffect(() => {
-    const badge = document.getElementById('mu-cart-badge');
-    if (badge) {
-      badge.textContent = totalItems;
-      badge.setAttribute('data-count', totalItems);
-    }
+    if (!headerHtml) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch('http://localhost:3001/api/user/me', { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.loggedIn && data.user) {
+            const profileNameEl = document.getElementById('mu-profile-name');
+            if (profileNameEl) {
+              profileNameEl.textContent = (data.user.nombre || 'Usuario').split(' ')[0];
+            }
+            const btnPerfil = document.getElementById('header-link-perfil');
+            if (btnPerfil) {
+              btnPerfil.onclick = (e) => {
+                e.preventDefault();
+                navigate('/perfil');
+              };
+            }
+          }
+        }
+      } catch (err) {}
+    }, 50);
+
+    return () => clearTimeout(timer);
+  }, [headerHtml, navigate]);
+
+  // =========================================================
+  // 3. ACTUALIZAR NUMERITO DEL CARRITO (A 0)
+  // =========================================================
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const badge = document.getElementById('mu-cart-badge');
+      if (badge) {
+        badge.textContent = totalItems;
+        badge.setAttribute('data-count', totalItems);
+      }
+    }, 50);
+    return () => clearTimeout(timer);
   }, [totalItems, headerHtml]);
 
   return (
@@ -50,7 +83,6 @@ const CheckoutSuccess = () => {
       
       <div className="success-container">
         <main className="success-content">
-        {/* Ícono de Check Azul */}
         <div className="check-icon">
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M20 6L9 17L4 12" stroke="#008DFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
@@ -66,13 +98,12 @@ const CheckoutSuccess = () => {
           próximas horas.
         </p>
 
-        {/* Cambiamos window.location por navigate para que no recargue toda la página */}
-        <button className="btn-home" onClick={() => navigate('/')}>
-          Home
+        {/* Usamos href para forzar una recarga limpia al terminar la compra */}
+        <button className="btn-home" onClick={() => window.location.href = '/'}>
+          Volver al Inicio  
         </button>
       </main>
 
-        {/* Decoración de hojas */}
         <div className="leaf-decoration left"></div>
         <div className="leaf-decoration right"></div>
       </div>

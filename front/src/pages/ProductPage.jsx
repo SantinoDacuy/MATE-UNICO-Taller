@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { useParams } from 'react-router-dom'; 
+import { useParams, useNavigate } from 'react-router-dom'; 
 import { CartContext } from '../context/CartContext'; 
 import './ProductPage.css';
 
@@ -10,13 +10,13 @@ import camionero4 from '../assets/camionero4.png';
 
 const ProductPage = () => {
   const { id } = useParams(); 
+  const navigate = useNavigate();
   const [producto, setProducto] = useState(null);
   const [cargando, setCargando] = useState(true);
   
   const [quantity, setQuantity] = useState(1);
   const [grabado, setGrabado] = useState(''); 
   
-  // Estados para los colores dinámicos
   const [availableColors, setAvailableColors] = useState([]);
   const [selectedColor, setSelectedColor] = useState(''); 
   
@@ -25,6 +25,9 @@ const ProductPage = () => {
 
   const { addToCart, totalItems } = useContext(CartContext);
 
+  // =========================================================
+  // 1. CARGAMOS EL DISEÑO (Header y Footer)
+  // =========================================================
   useEffect(() => {
     Promise.all([
       fetch('/src/components/header.html').then(r => r.text()).catch(() => ''),
@@ -42,6 +45,52 @@ const ProductPage = () => {
     }
   }, []);
 
+  // =========================================================
+  // 2. EL CEREBRO BLINDADO: Pone tu nombre de forma segura
+  // =========================================================
+  useEffect(() => {
+    if (!headerHtml) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch('http://localhost:3001/api/user/me', { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.loggedIn && data.user) {
+            const profileNameEl = document.getElementById('mu-profile-name');
+            if (profileNameEl) {
+              profileNameEl.textContent = (data.user.nombre || 'Usuario').split(' ')[0];
+            }
+            const btnPerfil = document.getElementById('header-link-perfil');
+            if (btnPerfil) {
+              btnPerfil.onclick = (e) => {
+                e.preventDefault();
+                navigate('/perfil');
+              };
+            }
+          }
+        }
+      } catch (err) {}
+    }, 50);
+
+    return () => clearTimeout(timer);
+  }, [headerHtml, navigate]);
+
+  // =========================================================
+  // 3. ACTUALIZAR NUMERITO DEL CARRITO
+  // =========================================================
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const badge = document.getElementById('mu-cart-badge');
+      if (badge) {
+        badge.textContent = totalItems;
+        badge.setAttribute('data-count', totalItems);
+      }
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [totalItems, headerHtml]);
+
+  // TRAER LA INFO DEL PRODUCTO DESDE STRAPI
   useEffect(() => {
     fetch(`http://localhost:1337/api/productos/${id}?populate=*`)
       .then((respuesta) => respuesta.json())
@@ -49,8 +98,6 @@ const ProductPage = () => {
         const prod = json.data;
         setProducto(prod);
         
-        // --- MAGIA DE COLORES DINÁMICOS ---
-        // Leemos Strapi y armamos la lista de colores que existen
         const colores = [];
         if (prod.color_negro) colores.push('Negro');
         if (prod.color_marron) colores.push('Marrón');
@@ -59,11 +106,9 @@ const ProductPage = () => {
         
         setAvailableColors(colores);
         
-        // Seleccionamos el primero por defecto (si es que tiene colores)
         if (colores.length > 0) {
           setSelectedColor(colores[0]);
         } else {
-          // Si el admin se olvidó de poner colores, le ponemos uno genérico
           setSelectedColor('Único'); 
         }
 
@@ -75,49 +120,16 @@ const ProductPage = () => {
       });
   }, [id]);
 
-  useEffect(() => {
-    const badge = document.getElementById('mu-cart-badge');
-    if (badge) {
-      badge.textContent = totalItems;
-      badge.setAttribute('data-count', totalItems);
-    }
-
-    const checkUserStatus = async () => {
-      try {
-        const res = await fetch('http://localhost:3001/api/user/me', { credentials: 'include' });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.loggedIn && data.user) {
-            const profileNameEl = document.getElementById('mu-profile-name');
-            if (profileNameEl) {
-              const firstName = (data.user.nombre || 'Usuario').split(' ')[0];
-              profileNameEl.textContent = firstName;
-            }
-          }
-        }
-      } catch (error) {
-        console.warn('Error checking user status:', error);
-      }
-    };
-
-    const container = document.getElementById('header-root');
-    if (container && container.innerHTML) {
-      checkUserStatus();
-    }
-  }, [headerHtml, totalItems]); 
-
   const handleAddToCart = () => {
-    // Mandamos al carrito el color exacto que eligió el cliente
     addToCart(producto, quantity, selectedColor, grabado);
     alert(`¡Mate ${selectedColor} agregado al carrito! 🛍️`);
   };
 
   if (cargando) return <div style={{textAlign: 'center', marginTop: '100px'}}><h2>Calentando el agua para tu mate... 🧉</h2></div>;
-  if (!producto) return <div style={{textAlign: 'center', marginTop: '100px'}}><h2>Mate no encontrado 😥</h2></div>;
+  if (!producto) return <div style={{textAlign: 'center', marginTop: '100px'}}><h2>Mate no encontrado</h2></div>;
 
   return (
     <div className="page-wrapper">
-      
       <div id="header-root" dangerouslySetInnerHTML={{ __html: headerHtml }} />
 
       <main className="main-content">
@@ -162,7 +174,6 @@ const ProductPage = () => {
                 </div>
               </div>
               
-              {/* --- CÍRCULOS DE COLORES DINÁMICOS --- */}
               {availableColors.length > 0 && (
                 <div className="selector-group">
                   <label>Color</label>
@@ -204,7 +215,6 @@ const ProductPage = () => {
               )}
             </div>
 
-            {/* --- SECCIÓN DE GRABADO CONDICIONAL --- */}
             {producto.material !== 'metal' && producto.material !== 'vidrio' ? (
               <div className="engraving-section">
                 <input 
@@ -235,11 +245,8 @@ const ProductPage = () => {
           </div>
         </section>
 
-        {/* ... (Reviews y Productos Similares quedan igual) ... */}
-        
         <section className="reviews-section">
           <h2>Opiniones</h2>
-          {/* ... */}
         </section>
 
         <section className="similar-products">

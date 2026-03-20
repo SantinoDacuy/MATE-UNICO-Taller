@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useRef, useContext } from 'react'; // Agregamos useContext
+import React, { useEffect, useState, useRef, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { CartContext } from '../context/CartContext'; // <-- IMPORTAMOS EL CEREBRO DEL CARRITO
+import { CartContext } from '../context/CartContext';
 import './Home.css';
 
 // Importaciones de imágenes
@@ -16,9 +16,8 @@ import carrusel3 from '../assets/carrusel3.jpg';
 import FilterPanel from '../components/FilterPanel';
 import '../components/FilterPanel.css';
 
-// --- 1. COMPONENTE HERO ---
 const Hero = () => {
-  const navigate = useNavigate(); // <-- Agregamos esto
+  const navigate = useNavigate();
   return (
     <section className="hero">
       <div className="hero-left">
@@ -29,18 +28,15 @@ const Hero = () => {
       <div className="hero-right">
         <h1>¡Bienvenidos a nuestra Tienda de Mates!</h1>
         <p>Descubrí un espacio pensado para los amantes del mate. Acá vas a encontrar mates de todo tipo, bombillas, bolsos y accesorios de calidad, ideales para acompañar cada momento de tu día. Queremos que disfrutes de la tradición con estilo y comodidad.</p>
-        
-        {/* Cambiá el "1" por el ID del mate imperial que quieras mostrar */}
         <button className="cta" onClick={() => navigate('/producto/wi7cwnvkdxm782iu6vbchsuk')}>Ver ahora</button>
       </div>
     </section>
   );
 };
 
-// --- 2. COMPONENTE FILTROS Y GALERÍA ---
 const FiltersAndGallery = () => {
   const [productosNuevos, setProductosNuevos] = useState([]);
-  const navigate = useNavigate(); // <-- Agregamos esto
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetch('http://localhost:1337/api/productos?populate=*&sort=createdAt:desc')
@@ -57,34 +53,24 @@ const FiltersAndGallery = () => {
         <div className="gallery-row">
           {productosNuevos[1] && (
             <Link to={`/producto/${productosNuevos[1].documentId}`} className="product left">
-              <img 
-                src={productosNuevos[1].imagenes?.length > 0 ? `http://localhost:1337${productosNuevos[1].imagenes[0].url}` : seller1} 
-                alt={productosNuevos[1].nombre} 
-              />
+              <img src={productosNuevos[1].imagenes?.length > 0 ? `http://localhost:1337${productosNuevos[1].imagenes[0].url}` : seller1} alt={productosNuevos[1].nombre} />
             </Link>
           )}
 
           {productosNuevos[0] && (
             <Link to={`/producto/${productosNuevos[0].documentId}`} className="product center featured">
               <div className="badge"><span>Nuevo</span><span>Ingreso</span></div>
-              <img 
-                src={productosNuevos[0].imagenes?.length > 0 ? `http://localhost:1337${productosNuevos[0].imagenes[0].url}` : seller2} 
-                alt={productosNuevos[0].nombre} 
-              />
+              <img src={productosNuevos[0].imagenes?.length > 0 ? `http://localhost:1337${productosNuevos[0].imagenes[0].url}` : seller2} alt={productosNuevos[0].nombre} />
             </Link>
           )}
 
           {productosNuevos[2] && (
             <Link to={`/producto/${productosNuevos[2].documentId}`} className="product right">
-              <img 
-                src={productosNuevos[2].imagenes?.length > 0 ? `http://localhost:1337${productosNuevos[2].imagenes[0].url}` : seller3} 
-                alt={productosNuevos[2].nombre} 
-              />
+              <img src={productosNuevos[2].imagenes?.length > 0 ? `http://localhost:1337${productosNuevos[2].imagenes[0].url}` : seller3} alt={productosNuevos[2].nombre} />
             </Link>
           )}
         </div>
         <div className="gallery-actions">
-          {/* Botón hacia el catálogo general */}
           <button className="ver-mas" onClick={() => navigate('/productos')}>Ver Más</button>
         </div>
       </div>
@@ -92,14 +78,10 @@ const FiltersAndGallery = () => {
   );
 };
 
-
-
-
-// --- 3. COMPONENTE BEST SELLERS ---
 const BestSellers = () => {
   const [productos, setProductos] = useState([]);
   const [cargando, setCargando] = useState(true);
-  const navigate = useNavigate(); // <-- Agregamos esto
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetch('http://localhost:1337/api/productos?populate=*')
@@ -119,25 +101,15 @@ const BestSellers = () => {
       <div className="best-sellers-info">
         <h2>Vea nuestros más vendidos</h2>
         <p>Estos son los productos que se ganaron el corazón de nuestros clientes. Perfectos para acompañarte en cualquier momento del día. Anímate a probar los más elegidos de la tienda.</p>
-        
-        {/* Botón hacia el catálogo ordenado por más vendidos */}
         <button className="ver-mas-button" onClick={() => navigate('/productos?sort=mas-vendidos')}>Ver Más</button>
       </div>
       <div className="best-sellers-list">
-                {cargando ? (
+        {cargando ? (
           <p style={{marginTop: '20px', fontWeight: 'bold'}}>Preparando los mates... 🧉</p>
         ) : (
           productos.map((prod) => (
-            <Link 
-              to={`/producto/${prod.documentId}`} 
-              className="seller-card" 
-              key={prod.id} 
-              style={{ textDecoration: 'none', color: 'inherit' }}
-            >
-              <img 
-                src={prod.imagenes && prod.imagenes.length > 0 ? `http://localhost:1337${prod.imagenes[0].url}` : seller1} 
-                alt={prod.nombre} 
-              />
+            <Link to={`/producto/${prod.documentId}`} className="seller-card" key={prod.id} style={{ textDecoration: 'none', color: 'inherit' }}>
+              <img src={prod.imagenes && prod.imagenes.length > 0 ? `http://localhost:1337${prod.imagenes[0].url}` : seller1} alt={prod.nombre} />
               <div className="seller-meta">
                 <span className="name">{prod.nombre}</span>
                 <span className="price">${prod.precio}</span>
@@ -204,7 +176,6 @@ const Home = () => {
   const [filterOpen, setFilterOpen] = useState(false);
   const navigate = useNavigate();
 
-  // --- 1. TRAEMOS EL TOTAL DE ÍTEMS DEL CARRITO ---
   const { totalItems } = useContext(CartContext);
 
   useEffect(() => {
@@ -224,14 +195,13 @@ const Home = () => {
     }
   }, []);
 
-  // --- 2. MAGIA: ACTUALIZAR EL NÚMERO DEL CARRITO EN EL HOME ---
   useEffect(() => {
     const badge = document.getElementById('mu-cart-badge');
     if (badge) {
       badge.textContent = totalItems;
       badge.setAttribute('data-count', totalItems);
     }
-  }, [totalItems, headerHtml]); // Se ejecuta si cambia el carrito o carga el HTML
+  }, [totalItems, headerHtml]);
 
   useEffect(() => {
     const container = document.getElementById('header-root');
@@ -256,9 +226,7 @@ const Home = () => {
       btn.onclick = () => setFilterOpen(true);
     };
 
-    const observer = new MutationObserver((mutations) => {
-      insertButton();
-    });
+    const observer = new MutationObserver(() => insertButton());
     observer.observe(container, { childList: true, subtree: true });
     insertButton();
     return () => observer.disconnect();
@@ -271,47 +239,69 @@ const Home = () => {
 
   useEffect(() => {
     const checkUserStatus = async () => {
+      let isUserLoggedIn = false;
+
       try {
         const res = await fetch('http://localhost:3001/api/user/me', { credentials: 'include' });
         if (res.ok) {
           const data = await res.json();
           if (data.loggedIn && data.user) {
+            isUserLoggedIn = true;
+            
             const profileNameEl = document.getElementById('mu-profile-name');
             if (profileNameEl) {
               const firstName = (data.user.nombre || 'Usuario').split(' ')[0];
               profileNameEl.textContent = firstName;
+            }
+
+            const btnLogout = document.getElementById('mu-logout-button');
+            if (btnLogout) {
+              btnLogout.style.display = 'block';
+              btnLogout.onclick = async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                try {
+                  await fetch('http://localhost:3001/auth/logout', { method: 'POST', credentials: 'include' });
+                } catch(err) {}
+                localStorage.removeItem('google_token');
+                window.location.replace('/'); 
+              };
             }
           }
         }
       } catch (error) {
         console.warn('Error checking user status:', error);
       }
+
+      const btnPerfil = document.getElementById('header-link-perfil');
+      if (btnPerfil) {
+        btnPerfil.onclick = (e) => {
+          if (e.target.id === 'mu-logout-button') return;
+          e.preventDefault();
+          navigate(isUserLoggedIn ? '/perfil' : '/login');
+        };
+      }
     };
 
     const container = document.getElementById('header-root');
-    if (container && container.innerHTML) {
+    if (container && container.innerHTML.trim() !== "") {
       checkUserStatus();
-    } else {
+    } else if (container) {
       const observer = new MutationObserver(() => {
-        if (container && container.innerHTML) {
+        if (container.innerHTML.trim() !== "") {
           checkUserStatus();
           observer.disconnect();
         }
       });
-      if (container) {
-        observer.observe(container, { childList: true, subtree: true });
-      }
+      observer.observe(container, { childList: true, subtree: true });
     }
-  }, [headerHtml]);
+  }, [headerHtml, navigate]);
 
   const applyFilters = (filtrosActivos) => {
-    // Si el usuario eligió filtros, lo mandamos al catálogo pasándole los filtros por la URL
     if (filtrosActivos && filtrosActivos.length > 0) {
-      // Convertimos el array ['negro', 'imperial'] a un texto 'negro,imperial'
       const stringFiltros = filtrosActivos.join(','); 
       navigate(`/productos?f=${stringFiltros}`);
     } else {
-      // Si tocó "Ver Resultados" sin tildar nada, lo mandamos al catálogo completo
       navigate('/productos');
     }
     setFilterOpen(false);

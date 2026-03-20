@@ -1,23 +1,21 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CartContext } from '../context/CartContext'; // <-- CONECTAMOS EL CEREBRO
-import './Cart.css'; // Si tu amigo no hizo el CSS, después le armamos uno rápido.
+import { CartContext } from '../context/CartContext'; 
+import './Cart.css';
 
-// Imagen comodín por si falla la de Strapi
 import imagenComodin from '../assets/camionero1.png';
 
 const Carrito = () => {
   const navigate = useNavigate();
-  
-  // 1. NOS TRAEMOS TODO DESDE EL CONTEXTO GLOBAL
   const { cart, removeFromCart, addToCart, totalItems, totalPrice } = useContext(CartContext);
 
-  // Estados para inyectar el diseño de tu compañero
   const [headerHtml, setHeaderHtml] = useState('');
   const [footerHtml, setFooterHtml] = useState('');
   const [toast, setToast] = useState(null);
 
-  // Cargar Header y Footer
+  // =========================================================
+  // 1. CARGAMOS EL DISEÑO (Header y Footer)
+  // =========================================================
   useEffect(() => {
     Promise.all([
       fetch('/src/components/header.html').then(r => r.text()).catch(() => ''),
@@ -35,13 +33,49 @@ const Carrito = () => {
     }
   }, []);
 
-  // Actualizar numerito del Header
+  // =========================================================
+  // 2. EL CEREBRO BLINDADO: Pone tu nombre de forma segura
+  // =========================================================
   useEffect(() => {
-    const badge = document.getElementById('mu-cart-badge');
-    if (badge) {
-      badge.textContent = totalItems;
-      badge.setAttribute('data-count', totalItems);
-    }
+    if (!headerHtml) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch('http://localhost:3001/api/user/me', { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.loggedIn && data.user) {
+            const profileNameEl = document.getElementById('mu-profile-name');
+            if (profileNameEl) {
+              profileNameEl.textContent = (data.user.nombre || 'Usuario').split(' ')[0];
+            }
+            const btnPerfil = document.getElementById('header-link-perfil');
+            if (btnPerfil) {
+              btnPerfil.onclick = (e) => {
+                e.preventDefault();
+                navigate('/perfil');
+              };
+            }
+          }
+        }
+      } catch (err) {}
+    }, 50);
+
+    return () => clearTimeout(timer);
+  }, [headerHtml, navigate]);
+
+  // =========================================================
+  // 3. ACTUALIZAR NUMERITO DEL CARRITO
+  // =========================================================
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const badge = document.getElementById('mu-cart-badge');
+      if (badge) {
+        badge.textContent = totalItems;
+        badge.setAttribute('data-count', totalItems);
+      }
+    }, 50);
+    return () => clearTimeout(timer);
   }, [totalItems, headerHtml]);
 
   // Mensaje flotante
@@ -53,18 +87,13 @@ const Carrito = () => {
 
   const showToast = (msg) => setToast(msg);
 
-  // Manejador de eliminación usando nuestro Contexto
   const handleEliminar = (producto) => {
     removeFromCart(producto.id, producto.color, producto.grabado);
     showToast('Producto eliminado');
   };
 
-  // Manejador de suma/resta usando nuestro Contexto (reutilizamos addToCart con 1 o -1)
   const handleCambioCantidad = (producto, delta) => {
-    // Evitamos que baje de 1
     if (producto.cantidad === 1 && delta === -1) return;
-    
-    // Le pasamos el mismo producto pero con cantidad 1 o -1 para que el contexto lo sume
     const mockProductParaContexto = { documentId: producto.id }; 
     addToCart(mockProductParaContexto, delta, producto.color, producto.grabado);
     showToast('Cantidad actualizada');
@@ -85,8 +114,6 @@ const Carrito = () => {
         <p className="carrito-subtitulo">¿No estás listo para pagar? Sigue comprando.</p>
 
         <div className="productos-lista">
-          
-          {/* SI EL CARRITO ESTÁ VACÍO */}
           {cart.length === 0 && (
             <div className="empty-cart">
               <p>Tu carrito está vacío. 🧉</p>
@@ -99,9 +126,7 @@ const Carrito = () => {
             </div>
           )}
 
-          {/* DIBUJAMOS LOS PRODUCTOS DEL CONTEXTO */}
           {cart.map((producto, index) => (
-            // Usamos el index en el key por si agrega el mismo mate con distinto color
             <div key={`${producto.id}-${index}`} className="producto-item">
               <img
                 src={producto.imagen ? `http://localhost:1337${producto.imagen}` : imagenComodin}
@@ -118,34 +143,21 @@ const Carrito = () => {
                 )}
 
                 <div className="control-cantidad" role="group" aria-label={`Cantidad de ${producto.nombre}`}>
-                  <button
-                    className="btn-cantidad"
-                    aria-label={`Disminuir cantidad`}
-                    onClick={() => handleCambioCantidad(producto, -1)}
-                  >-</button>
+                  <button className="btn-cantidad" aria-label={`Disminuir cantidad`} onClick={() => handleCambioCantidad(producto, -1)}>-</button>
                   <span className="cantidad-actual">{producto.cantidad}</span>
-                  <button
-                    className="btn-cantidad"
-                    aria-label={`Aumentar cantidad`}
-                    onClick={() => handleCambioCantidad(producto, 1)}
-                  >+</button>
+                  <button className="btn-cantidad" aria-label={`Aumentar cantidad`} onClick={() => handleCambioCantidad(producto, 1)}>+</button>
                 </div>
 
                 <p className="producto-precio">{formatPrecio(producto.precio * producto.cantidad)}</p>
               </div>
 
-              <button
-                className="btn-eliminar"
-                aria-label={`Eliminar ${producto.nombre}`}
-                onClick={() => handleEliminar(producto)}
-              >
+              <button className="btn-eliminar" aria-label={`Eliminar ${producto.nombre}`} onClick={() => handleEliminar(producto)}>
                 Eliminar <span className="eliminar-x">×</span>
               </button>
             </div>
           ))}
         </div>
 
-        {/* TOTAL Y BOTÓN DE CONTINUAR */}
         {cart.length > 0 && (
           <div className="confirmar-contenedor">
             <div style={{ width: '100%' }}>
@@ -162,7 +174,6 @@ const Carrito = () => {
       </main>
 
       <div id="footer-root" dangerouslySetInnerHTML={{ __html: footerHtml }} />
-
       {toast && <div className="cart-toast" role="status">{toast}</div>}
     </div>
   );
