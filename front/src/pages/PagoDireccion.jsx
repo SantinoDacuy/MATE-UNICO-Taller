@@ -7,17 +7,6 @@ import imagenComodin from '../assets/camionero1.png';
 
 const formatPrecio = (precio) => `$${precio.toLocaleString('es-AR')}`;
 
-const provinciasYCiudades = {
-  'Buenos Aires': ['La Plata', 'Mar del Plata', 'Bahía Blanca', 'Quilmes', 'Lanús', 'General Pueyrredón', 'Merlo', 'Moreno', 'Lomas de Zamora', 'Tigre', 'San Isidro', 'Vicente López', 'Avellaneda', 'Banfield', 'Berazategui', 'Florencio Varela', 'San Miguel', 'Malvinas Argentinas', 'José C. Paz', 'Hurlingham'],
-  'Córdoba': ['Córdoba', 'Villa María', 'Río Cuarto', 'Villa Carlos Paz', 'San Francisco', 'Villa Allende', 'Jesús María', 'Unquillo', 'La Calera', 'Arroyito', 'Marcos Juárez', 'Bell Ville', 'Leones', 'Morteros', 'Villa Dolores'],
-  'Santa Fe': ['Rosario', 'Santa Fe', 'Rafaela', 'Venado Tuerto', 'Reconquista', 'Santo Tomé', 'Villa Gobernador Gálvez', 'San Lorenzo', 'Pérez', 'Casilda', 'Esperanza', 'Sunchales', 'Firmat', 'Gálvez'],
-  'Mendoza': ['Mendoza', 'San Rafael', 'Godoy Cruz', 'Las Heras', 'Luján de Cuyo', 'Maipú', 'Guaymallén', 'Tunuyán', 'San Martín', 'Rivadavia', 'General Alvear', 'Malargüe'],
-  'Tucumán': ['San Miguel de Tucumán', 'Yerba Buena', 'Tafí Viejo', 'Concepción', 'Aguilares', 'Monteros', 'Famaillá', 'Lules', 'Banda del Río Salí'],
-  'Salta': ['Salta', 'San Salvador de Jujuy', 'Orán', 'Tartagal', 'General Güemes', 'Metán', 'Cafayate', 'Rosario de la Frontera', 'Cerrillos'],
-  'Entre Ríos': ['Paraná', 'Concordia', 'Gualeguaychú', 'Concepción del Uruguay', 'Villaguay', 'Colón', 'Federación', 'Nogoyá', 'Victoria']
-};
-const provincias = Object.keys(provinciasYCiudades);
-
 export default function PagoDireccion() {
   const { cart, removeFromCart, totalPrice, totalItems, descuento, setDescuento } = useContext(CartContext);
   const navigate = useNavigate();
@@ -28,124 +17,126 @@ export default function PagoDireccion() {
   const [direccion, setDireccion] = useState('');
   const [piso, setPiso] = useState('');
   const [cp, setCp] = useState('');
+
+  const [provincias, setProvincias] = useState([]);
+  const [municipios, setMunicipios] = useState([]);
   const [provinciaSeleccionada, setProvinciaSeleccionada] = useState('');
   const [ciudadSeleccionada, setCiudadSeleccionada] = useState('');
+
   const [guardarInfo, setGuardarInfo] = useState(false); 
   const [coupon, setCoupon] = useState('');
+  const [appliedCuponId, setAppliedCuponId] = useState(null); // Guardamos el ID del cupón de la DB
   const [toast, setToast] = useState(null);
   const [headerHtml, setHeaderHtml] = useState('');
   const [footerHtml, setFooterHtml] = useState('');
 
   const envio = 4000;
-  const gravado = 0; 
-  const total = totalPrice + envio + gravado - descuento;
+  const grabado = cart.reduce((acc, item) => (item.grabado && item.grabado !== 'Sin grabado' ? acc + 3000 : acc), 0);
+  const total = (totalPrice + envio + grabado) - descuento;
 
-  // 1. CARGAR HEADER Y FOOTER
   useEffect(() => {
     Promise.all([
       fetch('/src/components/header.html').then(r => r.text()).catch(() => ''),
-      fetch('/src/components/footer.html').then(r => r.text()).catch(() => '')
+      fetch('/src/components/footer.html').then(r => r.text()).catch(() => ''),
+      fetch('https://apis.datos.gob.ar/georef/api/provincias?campos=id,nombre')
+        .then(res => res.json())
+        .then(data => setProvincias(data.provincias.sort((a, b) => a.nombre.localeCompare(b.nombre))))
     ]).then(([header, footer]) => {
       setHeaderHtml(header);
       setFooterHtml(footer);
     });
-
-    if (!document.querySelector('link[href="/src/components/styles.css"]')) {
-      const l = document.createElement('link');
-      l.rel = 'stylesheet';
-      l.href = '/src/components/styles.css';
-      document.head.appendChild(l);
-    }
   }, []);
 
-  // 2. VERIFICAR LOGIN Y ACTUALIZAR HEADER (El Patovica)
+  useEffect(() => {
+    if (provinciaSeleccionada) {
+      fetch(`https://apis.datos.gob.ar/georef/api/municipios?provincia=${provinciaSeleccionada}&max=500&campos=id,nombre`)
+        .then(res => res.json())
+        .then(data => setMunicipios(data.municipios.sort((a, b) => a.nombre.localeCompare(b.nombre))));
+    }
+  }, [provinciaSeleccionada]);
+
   useEffect(() => {
     if (!headerHtml) return;
-
-    const timer = setTimeout(async () => {
+    const syncUser = async () => {
       try {
         const res = await fetch('http://localhost:3001/api/user/me', { credentials: 'include' });
-        if (!res.ok) throw new Error('No autorizado');
-        
-        const data = await res.json();
-        if (data.loggedIn && data.user) {
-          setAutorizado(true);
-          const profileNameEl = document.getElementById('mu-profile-name');
-          if (profileNameEl) profileNameEl.textContent = (data.user.nombre || 'Usuario').split(' ')[0];
-          
-          const btnPerfil = document.getElementById('header-link-perfil');
-          if (btnPerfil) btnPerfil.onclick = (e) => { e.preventDefault(); navigate('/perfil'); };
-        } else {
-          navigate('/login');
-        }
-      } catch (error) {
-        navigate('/login');
-      }
-    }, 50);
-
-    return () => clearTimeout(timer);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.loggedIn && data.user) {
+            setAutorizado(true);
+            setNombre(data.user.nombre || '');
+            setApellido(data.user.apellido || '');
+            setDireccion(data.user.calle || '');
+            setProvinciaSeleccionada(data.user.provincia || '');
+            const profileNameEl = document.getElementById('mu-profile-name');
+            if (profileNameEl) profileNameEl.textContent = (data.user.nombre || 'Usuario').split(' ')[0];
+          } else { navigate('/login'); }
+        } else { navigate('/login'); }
+      } catch (error) { navigate('/login'); }
+    };
+    syncUser();
   }, [headerHtml, navigate]);
 
-  // 3. RECUPERAR DATOS GUARDADOS
-  useEffect(() => {
-    if (autorizado) {
-      const savedData = localStorage.getItem('mateUnicoDireccion');
-      if (savedData) {
-        try {
-          const parsed = JSON.parse(savedData);
-          setNombre(parsed.nombre || '');
-          setApellido(parsed.apellido || '');
-          setDireccion(parsed.direccion || '');
-          setPiso(parsed.piso || '');
-          setCp(parsed.cp || '');
-          setProvinciaSeleccionada(parsed.provincia || '');
-          setCiudadSeleccionada(parsed.ciudad || '');
-          setGuardarInfo(true); 
-        } catch (e) {
-          console.error("Error leyendo info guardada");
+  // --- LÓGICA DE CUPONES DINÁMICA CON LA DB ---
+  const applyCoupon = async () => {
+    const code = coupon.trim().toUpperCase();
+    if (!code) return setToast('Ingresá un código');
+
+    try {
+      const res = await fetch(`http://localhost:3001/api/cupones/${code}`);
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        let montoADescuentar = 0;
+        if (data.tipo === 'monto fijo') {
+          montoADescuentar = data.valor;
+        } else {
+          // Es porcentaje
+          montoADescuentar = totalPrice * (data.valor / 100);
         }
+
+        setDescuento(montoADescuentar);
+        setAppliedCuponId(data.id_cupon);
+        setToast(`¡Cupón aplicado! -$${montoADescuentar.toLocaleString()}`);
+      } else {
+        setDescuento(0);
+        setAppliedCuponId(null);
+        setToast(data.message || 'Cupón no válido ❌');
       }
+    } catch (err) {
+      setToast('Error al validar cupón');
     }
-  }, [autorizado]);
+    setCoupon('');
+  };
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const badge = document.getElementById('mu-cart-badge');
-      if (badge) {
-        badge.textContent = totalItems;
-        badge.setAttribute('data-count', totalItems);
-      }
-    }, 50);
-    return () => clearTimeout(timer);
-  }, [totalItems, headerHtml]);
-
-  useEffect(() => {
-    if (!toast) return;
-    const id = setTimeout(() => setToast(null), 2000);
-    return () => clearTimeout(id);
-  }, [toast]);
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (cart.length === 0) {
-      setToast('El carrito está vacío');
-      return;
-    }
+    if (cart.length === 0) return setToast('El carrito está vacío');
+    
     if (guardarInfo) {
-      const datosDireccion = { nombre, apellido, direccion, piso, cp, provincia: provinciaSeleccionada, ciudad: ciudadSeleccionada };
-      localStorage.setItem('mateUnicoDireccion', JSON.stringify(datosDireccion));
-    } else {
-      localStorage.removeItem('mateUnicoDireccion');
+      try {
+        await fetch('http://localhost:3001/api/user/me', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nombre, apellido, calle: direccion, provincia: provinciaSeleccionada, ciudad: ciudadSeleccionada })
+        });
+      } catch (err) {}
     }
+
+    sessionStorage.setItem('checkout_data', JSON.stringify({ 
+        nombre, direccion, provinciaSeleccionada, ciudadSeleccionada, 
+        descuento: descuento, totalFinal: total,
+        id_cupon: appliedCuponId // Pasamos el ID para que el back lo registre en la venta
+    }));
     navigate('/pago-envio');
   };
 
-  const applyCoupon = () => {
-    if (!coupon) return setToast('Ingresa un cupón');
-    setDescuento(10000);
-    setToast('Cupón aplicado con éxito');
-    setCoupon('');
-  };
+  useEffect(() => {
+    if (!toast) return;
+    const id = setTimeout(() => setToast(null), 2500);
+    return () => clearTimeout(id);
+  }, [toast]);
 
   if (!autorizado || !headerHtml) return null;
 
@@ -158,18 +149,13 @@ export default function PagoDireccion() {
         <section className="checkout-columna-izquierda">
           <h1 className="titulo-carrito">Tu carrito</h1>
           <div className="productos-lista-checkout">
-            {cart.length === 0 && <div className="empty-checkout">Tu carrito está vacío.</div>}
             {cart.map((producto, index) => (
-              <div key={`${producto.id}-${index}`} className="producto-item-checkout card-item">
-                <img src={producto.imagen ? `http://localhost:1337${producto.imagen}` : imagenComodin} alt={producto.nombre} className="producto-imagen-checkout" loading="lazy" />
+              <div key={index} className="producto-item-checkout card-item">
+                <img src={producto.imagen ? `http://localhost:1337${producto.imagen}` : imagenComodin} alt={producto.nombre} className="producto-imagen-checkout" />
                 <div className="producto-detalle-checkout">
                   <h3 className="nombre-producto-checkout">{producto.nombre}</h3>
                   <div className="meta-checkout">
-                    <span className="color-producto-checkout">Color: {producto.color}</span>
-                    {producto.grabado && producto.grabado !== 'Sin grabado' && (
-                      <span className="color-producto-checkout" style={{marginLeft: '10px'}}>Grabado: {producto.grabado}</span>
-                    )}
-                    <span className="cantidad-producto-checkout" style={{display: 'block', marginTop: '5px'}}>Qty: {producto.cantidad}</span>
+                    <span>Color: {producto.color} | Cant: {producto.cantidad}</span>
                   </div>
                   <div className="precio-producto-checkout">{formatPrecio(producto.precio * producto.cantidad)}</div>
                 </div>
@@ -184,57 +170,46 @@ export default function PagoDireccion() {
           </div>
 
           <div className="resumen-orden card-resumen">
-            <div className="resumen-fila"><span className="resumen-label">Subtotal</span><span className="resumen-valor">{formatPrecio(totalPrice)}</span></div>
-            <div className="resumen-fila"><span className="resumen-label">Gravado</span><span className="resumen-valor">{formatPrecio(gravado)}</span></div>
-            <div className="resumen-fila"><span className="resumen-label">Envío</span><span className="resumen-valor">{formatPrecio(envio)}</span></div>
-            {descuento > 0 && <div className="resumen-fila"><span className="resumen-label">Descuento</span><span className="resumen-valor descuento-valor">-{formatPrecio(descuento)}</span></div>}
+            <div className="resumen-fila"><span>Subtotal</span><span>{formatPrecio(totalPrice)}</span></div>
+            <div className="resumen-fila"><span>Envío</span><span>{formatPrecio(envio)}</span></div>
+            <div className="resumen-fila"><span>Grabados</span><span>{formatPrecio(grabado)}</span></div>
+            {descuento > 0 && <div className="resumen-fila"><span className="descuento-valor">Descuento</span><span className="descuento-valor">-{formatPrecio(descuento)}</span></div>}
             <hr className="resumen-separador" />
-            <div className="resumen-fila resumen-total"><span className="resumen-label">Total</span><span className="resumen-valor">{formatPrecio(total)}</span></div>
+            <div className="resumen-fila resumen-total"><span>Total</span><span>{formatPrecio(total)}</span></div>
           </div>
         </section>
 
         <section className="checkout-columna-derecha">
           <div className="pasos-checkout">
-            <span className="paso-activo">Dirección</span>
-            <div className="line"></div>
-            <span>Envío</span>
-            <div className="line"></div>
-            <span>Pago</span>
+            <span className="paso-activo">Dirección</span> <div className="line"></div> <span>Envío</span> <div className="line"></div> <span>Pago</span>
           </div>
-
-          <h2 className="titulo-informacion">Información</h2>
-
           <form className="formulario-direccion" onSubmit={handleSubmit}>
             <div className="form-fila-direccion">
               <input type="text" placeholder="Nombre" value={nombre} onChange={e => setNombre(e.target.value)} required />
               <input type="text" placeholder="Apellido" value={apellido} onChange={e => setApellido(e.target.value)} required />
             </div>
-            <input type="text" placeholder="Dirección (Calle y Número)" value={direccion} onChange={e => setDireccion(e.target.value)} required />
-            <input type="text" placeholder="Piso, Depto, etc (opcional)" value={piso} onChange={e => setPiso(e.target.value)} />
+            <input type="text" placeholder="Calle y Número" value={direccion} onChange={e => setDireccion(e.target.value)} required />
             <input type="text" placeholder="Código Postal" value={cp} onChange={e => setCp(e.target.value)} required />
-            
             <div className="form-fila-direccion">
               <select className="form-dropdown-dir" value={provinciaSeleccionada} onChange={(e) => { setProvinciaSeleccionada(e.target.value); setCiudadSeleccionada(''); }} required>
                 <option value="">Provincia</option>
-                {provincias.map(prov => (<option key={prov} value={prov}>{prov}</option>))}
+                {provincias.map(p => <option key={p.id} value={p.nombre}>{p.nombre}</option>)}
               </select>
               <select className="form-dropdown-dir" value={ciudadSeleccionada} onChange={(e) => setCiudadSeleccionada(e.target.value)} disabled={!provinciaSeleccionada} required>
                 <option value="">Ciudad</option>
-                {provinciaSeleccionada && provinciasYCiudades[provinciaSeleccionada]?.map(ciudad => (<option key={ciudad} value={ciudad}>{ciudad}</option>))}
+                {municipios.map(m => <option key={m.id} value={m.nombre}>{m.nombre}</option>)}
               </select>
             </div>
-            
             <label className="checkbox-guardar">
               Guardar información de contacto 
               <input type="checkbox" checked={guardarInfo} onChange={(e) => setGuardarInfo(e.target.checked)} />
             </label>
             <button type="submit" className="btn-continuar">Continuar al Envío</button>
           </form>
-          <div className="monstera-fondo" aria-hidden></div>
         </section>
       </main>
       <div id="footer-root" dangerouslySetInnerHTML={{ __html: footerHtml }} />
-      {toast && <div className="checkout-toast" role="status">{toast}</div>}
+      {toast && <div className="checkout-toast">{toast}</div>}
     </div>
   );
 }

@@ -192,6 +192,52 @@ app.post('/api/user/me', async (req, res) => {
 
 /*
 =================================================
+RUTA: AGREGAR/QUITAR FAVORITOS
+POST /api/user/favoritos
+=================================================
+*/
+app.post('/api/user/favoritos', async (req, res) => {
+    // Verificamos sesión
+    if (!req.session || !req.session.userId) {
+        return res.status(401).json({ success: false, error: 'No logueado' });
+    }
+    
+    const { id, nombre, color } = req.body;
+    const userId = req.session.userId;
+
+    try {
+        // 1. Buscamos los favoritos actuales del usuario
+        const { rows } = await db.query('SELECT favoritos_json FROM Usuario WHERE id = $1', [userId]);
+        
+        // 2. Parseamos el JSON (si está vacío, creamos un array nuevo)
+        let favoritos = [];
+        try {
+            favoritos = rows[0].favoritos_json ? JSON.parse(rows[0].favoritos_json) : [];
+        } catch (e) {
+            favoritos = [];
+        }
+
+        // 3. Lógica de Toggle: Si ya está, lo quitamos. Si no está, lo agregamos.
+        const index = favoritos.findIndex(f => String(f.id) === String(id));
+        
+        if (index > -1) {
+            favoritos.splice(index, 1); // Quitar de favoritos
+        } else {
+            favoritos.push({ id, nombre, color }); // Agregar a favoritos
+        }
+
+        // 4. Guardamos el nuevo array como JSON en la DB
+        await db.query('UPDATE Usuario SET favoritos_json = $1 WHERE id = $2', [JSON.stringify(favoritos), userId]);
+        
+        return res.json({ success: true, isFavorite: index === -1 });
+    } catch (err) {
+        console.error('Error en favoritos:', err);
+        return res.status(500).json({ success: false, error: 'Error de base de datos' });
+    }
+});
+
+/*
+=================================================
 RUTA: OBTENER VENTAS DEL USUARIO
 GET /api/user/me/ventas
 =================================================
@@ -203,18 +249,14 @@ app.get('/api/user/me/ventas', async (req, res) => {
     try {
         // Get ventas with basic info - use simple query to avoid parameter issues
         const userId = req.session.userId;
-        const ventasQuery = `SELECT id, fecha_venta, subtotal, descuento, total, estado, metodo_pago FROM Venta WHERE id_usuario = ${userId} ORDER BY fecha_venta DESC`;
+        const ventasQuery = `SELECT id, fecha_venta, subtotal, descuento, total, estado, metodo_pago FROM venta WHERE id_usuario = ${userId} ORDER BY fecha_venta DESC`;
         const { rows: ventas } = await db.query(ventasQuery);
 
         // For each venta, get its details if they exist
         for (let venta of ventas) {
             try {
-                const detallesQuery = `SELECT dv.cantidad, dv.precio_unitario, dv.subtotal,
-                           p.material, p.color, p.descripcion,
-                           c.descripcion as combo_desc, c.tipo_combo
-                    FROM Detalle_Venta dv
-                    LEFT JOIN Producto p ON dv.id_producto = p.id
-                    LEFT JOIN Combo c ON dv.id_combo = c.id
+                const detallesQuery = `SELECT dv.id_producto, dv.cantidad, dv.precio_unitario, dv.subtotal, dv.nombre_producto
+                    FROM detalle_venta dv
                     WHERE dv.id_venta = ${venta.id}`;
                 const { rows: detalles } = await db.query(detallesQuery);
 
@@ -223,14 +265,10 @@ app.get('/api/user/me/ventas', async (req, res) => {
                     cantidad: d.cantidad,
                     precio_unitario: d.precio_unitario,
                     subtotal: d.subtotal,
-                    producto: d.material ? {
-                        material: d.material,
-                        color: d.color,
-                        descripcion: d.descripcion
-                    } : d.combo_desc ? {
-                        descripcion: d.combo_desc,
-                        tipo_combo: d.tipo_combo
-                    } : null
+                    id_producto: d.id_producto,
+                    producto: {
+                        material: d.nombre_producto || 'Producto'
+                    }
                 }));
             } catch (detailErr) {
                 console.error('Error getting details for venta', venta.id, detailErr);
@@ -284,9 +322,9 @@ app.post('/debug/seed_user', async (req, res) => {
 
         for (const v of sampleVentas) {
             try {
-                const exists = await db.query('SELECT id FROM Venta WHERE id = $1', [v.id]);
+                const exists = await db.query('SELECT id FROM venta WHERE id = $1', [v.id]);
                 if (exists.rows.length === 0) {
-                    await db.query('INSERT INTO Venta (id, id_usuario, fecha_venta, subtotal, descuento, total, estado) VALUES ($1, $2, $3, $4, $5, $6, $7)', [v.id, userId, v.fecha, v.total, 0, v.total, v.estado]);
+                    await db.query('INSERT INTO venta (id, id_usuario, fecha_venta, subtotal, descuento, total, estado) VALUES ($1, $2, $3, $4, $5, $6, $7)', [v.id, userId, v.fecha, v.total, 0, v.total, v.estado]);
                 }
             } catch (e) {
                 console.warn('Could not insert venta', v.id, e.message);
@@ -371,6 +409,57 @@ app.post('/auth/logout', (req, res) => {
         res.clearCookie('connect.sid');
         return res.json({ success: true });
     });
+});
+
+app.post('/api/checkout/procesar', async (req, res) => {
+    if (!req.session || !req.session.userId) return res.status(401).json({ error: 'No logueado' });
+
+    const { cart, checkoutData } = req.body;
+    const userId = req.session.userId;
+
+    try {
+        await db.query('BEGIN');
+
+        // Alter table to add nombre_producto if not exists
+        await db.query('ALTER TABLE detalle_venta ADD COLUMN IF NOT EXISTS nombre_producto VARCHAR(255)');
+
+        const subtotalVenta = cart.reduce((acc, item) => acc + (Number(item.precio) * Number(item.cantidad)), 0);
+        const totalFinal = checkoutData.totalFinal || (subtotalVenta + 4000);
+
+        console.log(`Iniciando compra para usuario ID: ${userId}`);
+
+        // 1. Insertar en venta (todo minúsculas, sin comillas)
+        const ventaRes = await db.query(
+            `INSERT INTO venta (id_usuario, fecha_venta, subtotal, descuento, total, estado, metodo_pago)
+             VALUES ($1, CURRENT_DATE, $2, $3, $4, 'Pendiente', 'Mercado Pago')
+             RETURNING id`,
+            [userId, subtotalVenta, 0, totalFinal]
+        );
+
+        const ventaId = ventaRes.rows[0].id;
+
+        // 2. Insertar en detalle_venta
+        for (const item of cart) {
+            let prodId = item.documentId || item.id.toString();
+            const nombreProd = item.nombre || 'Producto';
+            const subtotalItem = Number(item.precio) * Number(item.cantidad);
+
+            await db.query(
+                `INSERT INTO detalle_venta (id_venta, id_producto, cantidad, precio_unitario, subtotal, total, nombre_producto)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                [ventaId, prodId, item.cantidad, item.precio, subtotalItem, subtotalItem, nombreProd]
+            );
+        }
+
+        await db.query('COMMIT');
+        console.log("✅ Venta guardada correctamente en tablas minúsculas. ID:", ventaId);
+        res.json({ success: true, ventaId });
+
+    } catch (err) {
+        await db.query('ROLLBACK');
+        console.error('❌ ERROR SQL REAL:', err.message);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // Ponemos el servidor a escuchar

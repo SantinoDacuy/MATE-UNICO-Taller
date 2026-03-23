@@ -14,7 +14,9 @@ const HomePage = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  // --- CONFIGURACIÓN MANUAL DEL CLIENT ID ---
+  // Pegamos el ID directamente acá para asegurar que coincida con el del backend
+  const googleClientId = "931841756818-6rfk9jgaad9rsk44vsnolrtaro93k3qn.apps.googleusercontent.com";;
     if (!googleClientId) {
       setError('Error: Google Client ID no configurado');
       setIsLoading(false);
@@ -103,8 +105,12 @@ const HomePage = () => {
     >
       <div className="login-card-container">
         
-        {/* Logo Superior */}
-        <div className="login-logo-top">
+        {/* Reemplaza solo el bloque login-logo-top por este: */}
+        <div 
+          className="login-logo-top" 
+          onClick={() => navigate('/')} 
+          style={{ cursor: 'pointer' }}
+        >
           <span className="logo-text-accent">
             Mate <img src={logoImage} alt="Mate Único Logo" className="logo-inline" /> Único
           </span>

@@ -4,11 +4,13 @@ import { CartContext } from '../context/CartContext';
 import './Pago-tarjeta.css';
 import mercadoPagoImg from '../assets/mercadoPago.png';
 
-const CheckoutPago = () => {
+const PagoTarjeta = () => {
   const [headerHtml, setHeaderHtml] = useState('');
   const [footerHtml, setFooterHtml] = useState('');
   const navigate = useNavigate();
-  const { totalItems } = useContext(CartContext);
+  
+  // Traemos el carrito y la función para vaciarlo del contexto
+  const { cart, totalItems, clearCart } = useContext(CartContext);
 
   // =========================================================
   // 1. CARGAMOS EL DISEÑO (Header y Footer)
@@ -31,7 +33,7 @@ const CheckoutPago = () => {
   }, []);
 
   // =========================================================
-  // 2. EL CEREBRO BLINDADO: Pone tu nombre de forma segura
+  // 2. ACTUALIZAR NOMBRE EN HEADER
   // =========================================================
   useEffect(() => {
     if (!headerHtml) return;
@@ -65,58 +67,90 @@ const CheckoutPago = () => {
   // 3. ACTUALIZAR NUMERITO DEL CARRITO
   // =========================================================
   useEffect(() => {
-    const timer = setTimeout(() => {
-      const badge = document.getElementById('mu-cart-badge');
-      if (badge) {
-        badge.textContent = totalItems;
-        badge.setAttribute('data-count', totalItems);
-      }
-    }, 50);
-    return () => clearTimeout(timer);
+    const badge = document.getElementById('mu-cart-badge');
+    if (badge) {
+      badge.textContent = totalItems;
+      badge.setAttribute('data-count', totalItems);
+    }
   }, [totalItems, headerHtml]);
+
+  // =========================================================
+  // 4. FUNCIÓN PARA PROCESAR LA VENTA REAL EN DB
+  // =========================================================
+  const handleFinalizarCompra = async () => {
+    const checkoutData = JSON.parse(sessionStorage.getItem('checkout_data') || '{}');
+
+    // Limpiamos el carrito para que solo lleve lo necesario y no objetos pesados de Strapi
+    const cartLimpio = cart.map(item => ({
+      id: item.id || item.documentId,
+      precio: Number(item.precio),
+      cantidad: Number(item.cantidad)
+    }));
+
+    try {
+      const res = await fetch('http://localhost:3001/api/checkout/procesar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          cart: cartLimpio,
+          checkoutData: checkoutData
+        })
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        if (clearCart) clearCart(); 
+        sessionStorage.removeItem('checkout_data');
+        navigate('/final');
+      } else {
+        // Ahora el alert te va a decir EXACTAMENTE qué falló en Postgres
+        alert("Error: " + (data.error || "No se pudo registrar la compra"));
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Error de conexión con el servidor.");
+    }
+  };
 
   return (
     <div className="pago-tarjeta-page">
       <div id="header-root" dangerouslySetInnerHTML={{ __html: headerHtml }} />
       
       <div className="checkout-container">
-      {/* Breadcrumb */}
-      <nav className="breadcrumb">Home &gt; Carrito</nav>
+        <nav className="breadcrumb">Home &gt; Carrito</nav>
 
-      {/* Stepper (Progreso) */}
-      <div className="stepper">
-        <span className="step">Dirección</span>
-        <div className="line"></div>
-        <span className="step">Envío</span>
-        <div className="line"></div>
-        <span className="step active">Pago</span>
-      </div>
-
-      <main className="content payment-section">
-        <div className="payment-header">
-          <h2 className="section-title">Medio de pago único</h2>
+        <div className="stepper">
+          <span className="step">Dirección</span>
+          <div className="line"></div>
+          <span className="step">Envío</span>
+          <div className="line"></div>
+          <span className="step active">Pago</span>
         </div>
 
-        {/* Caja de Mercado Pago */}
-        <div className="mp-info-box">
-          <img src={mercadoPagoImg} alt="Mercado Pago" className="mp-logo-large" />
-          <p>
-            Al hacer clic en continuar, serás redirigido a <strong>Mercado Pago</strong>.
-            Podrás usar tu saldo, tarjeta de crédito o débito para completar tu compra.
-          </p>
-        </div>
+        <main className="content payment-section">
+          <div className="payment-header">
+            <h2 className="section-title">Medio de pago único</h2>
+          </div>
 
-        <button 
-          className="btn-pay mp-button" 
-          onClick={() => navigate('/final')} // Por ahora nos lleva a final, luego llamará a la API de MP
-        >
-          Continuar a Mercado Pago
-        </button>
-      </main>
+          <div className="mp-info-box">
+            <img src={mercadoPagoImg} alt="Mercado Pago" className="mp-logo-large" />
+            <p>
+              Al hacer clic en continuar, simularemos la conexión con <strong>Mercado Pago</strong> para registrar tu pedido en nuestro sistema.
+            </p>
+          </div>
 
-      {/* Decoración de hojas */}
-      <div className="leaf-decoration left"></div>
-      <div className="leaf-decoration right"></div>
+          <button 
+            className="btn-pay mp-button" 
+            onClick={handleFinalizarCompra}
+          >
+            Finalizar y Pagar
+          </button>
+        </main>
+
+        <div className="leaf-decoration left"></div>
+        <div className="leaf-decoration right"></div>
       </div>
       
       <div id="footer-root" dangerouslySetInnerHTML={{ __html: footerHtml }} />
@@ -124,4 +158,4 @@ const CheckoutPago = () => {
   );
 };
 
-export default CheckoutPago;
+export default PagoTarjeta;

@@ -26,6 +26,36 @@ const ProductPage = () => {
 
   const { addToCart, totalItems } = useContext(CartContext);
 
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [similarProducts, setSimilarProducts] = useState([]);
+  const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
+
+  const FAVORITES_STORAGE_KEY = 'mateUnicoFavorites';
+
+  const loadFavorites = () => {
+    try {
+      const raw = localStorage.getItem(FAVORITES_STORAGE_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
+    }
+  };
+
+  const saveFavorites = (items) => {
+    try {
+      localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(items));
+    } catch (e) {
+      console.warn('No se pudo guardar favoritos localmente', e);
+    }
+  };
+
+  const normalizeProductKey = (prod) => {
+    if (!prod) return null;
+    return String(prod.documentId || prod.id || id || '').trim();
+  };
+
   // --- LÓGICA DE PRECIOS BLINDADA ---
   const PRECIO_GRABADO = 3000;
   
@@ -64,24 +94,41 @@ const ProductPage = () => {
 
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch('http://localhost:3001/api/user/me', { credentials: 'include' });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.loggedIn && data.user) {
-            const profileNameEl = document.getElementById('mu-profile-name');
-            if (profileNameEl) {
-              profileNameEl.textContent = (data.user.nombre || 'Usuario').split(' ')[0];
-            }
-            const btnPerfil = document.getElementById('header-link-perfil');
-            if (btnPerfil) {
-              btnPerfil.onclick = (e) => {
-                e.preventDefault();
-                navigate('/perfil');
-              };
-            }
+        const res = await fetch('http://localhost:3001/auth/me', { credentials: 'include' });
+        const data = res.ok ? await res.json() : null;
+
+        const profileNameEl = document.getElementById('mu-profile-name');
+        const profileLinkEl = document.getElementById('header-link-perfil') || document.getElementById('mu-profile-link') || (document.querySelector('#mu-profile-area a'));
+        const logoutBtn = document.getElementById('mu-logout-button');
+
+        const setProfileUI = (loggedIn, name) => {
+          if (profileNameEl) {
+            profileNameEl.textContent = loggedIn ? name : 'Ingresar';
+            profileNameEl.style.color = loggedIn ? '#000' : '#444';
           }
+          if (profileLinkEl) {
+            profileLinkEl.onclick = (e) => {
+              e.preventDefault();
+              navigate(loggedIn ? '/perfil' : '/login');
+            };
+            profileLinkEl.setAttribute('href', loggedIn ? '/perfil' : '/login');
+          }
+          if (logoutBtn) {
+            logoutBtn.style.display = loggedIn ? 'block' : 'none';
+          }
+        };
+
+        if (data && data.loggedIn && data.user) {
+          const nombre = (data.user.nombre || data.user.email || 'Usuario').split(' ')[0];
+          setIsUserLoggedIn(true);
+          setProfileUI(true, nombre);
+        } else {
+          setIsUserLoggedIn(false);
+          setProfileUI(false, 'Ingresar');
         }
-      } catch (err) {}
+      } catch (err) {
+        setIsUserLoggedIn(false);
+      }
     }, 50);
 
     return () => clearTimeout(timer);
@@ -130,6 +177,80 @@ const ProductPage = () => {
         setCargando(false);
       });
   }, [id]);
+
+  // Mantener estado favorito sincronizado en historial local
+  useEffect(() => {
+    if (!producto) return;
+    const currentProductKey = normalizeProductKey(producto);
+    const favoritos = loadFavorites();
+    setIsFavorite(favoritos.some((p) => String(p.documentId) === currentProductKey));
+  }, [producto]);
+
+  // Productos similares random (se recarga cuando cambia el producto)
+  useEffect(() => {
+    if (!producto) return;
+
+    fetch('http://localhost:1337/api/productos?populate=*')
+      .then((respuesta) => respuesta.json())
+      .then((json) => {
+        const all = Array.isArray(json.data) ? json.data : [];
+        const currentIdStr = normalizeProductKey(producto);
+
+        const candidates = all.filter((p) => String(p.documentId || p.id || '').trim() !== currentIdStr);
+        const shuffled = candidates.sort(() => 0.5 - Math.random());
+        const selected = shuffled.slice(0, 4);
+
+        setSimilarProducts(selected);
+      })
+      .catch((error) => {
+        console.error('Error al cargar productos similares:', error);
+      });
+  }, [producto]);
+
+  // Cuando cambia el producto, vamos al inicio de la página
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [id]);
+
+  const handleToggleFavorite = async () => {
+    if (!producto) return;
+    const idCurrent = normalizeProductKey(producto);
+    const favoritos = loadFavorites();
+
+    const isNowFavorite = !isFavorite;
+    let updated = [];
+
+    if (isNowFavorite) {
+      updated = [
+        ...favoritos.filter((p) => String(p.documentId) !== idCurrent),
+        {
+          id: idCurrent,
+          documentId: idCurrent,
+          nombre: producto.nombre || 'Sin nombre',
+          color: selectedColor || 'Único',
+          imagen: producto.imagenes && producto.imagenes.length > 0 ? `http://localhost:1337${producto.imagenes[0].url}` : ''
+        }
+      ];
+      alert('¡Agregado a favoritos!');
+    } else {
+      updated = favoritos.filter((p) => String(p.documentId) !== idCurrent);
+      alert('Quitado de favoritos');
+    }
+
+    saveFavorites(updated);
+    setIsFavorite(isNowFavorite);
+
+    try {
+      await fetch('http://localhost:3001/api/user/favoritos', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: idCurrent, nombre: producto.nombre || 'Sin nombre', color: selectedColor || 'Único' })
+      });
+    } catch (e) {
+      // Si falla la API de favoritos, no bloqueamos la experiencia.
+    }
+  };
 
   const handleAddToCart = () => {
     // Si escribió algo pero se olvidó de tocar "Agregar", le avisamos!
@@ -181,9 +302,18 @@ const ProductPage = () => {
           </div>
 
           <div className="product-info">
-            <h1>{producto.nombre}</h1>
-            <button className="wishlist-btn">♡</button>
-            
+            <div className="product-title-row">
+              <h1>{producto.nombre}</h1>
+              <button
+                className={`wishlist-btn ${isFavorite ? 'favorite' : ''}`}
+                onClick={handleToggleFavorite}
+                aria-label={isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+                title={isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+              >
+                <span className="heart-icon" aria-hidden="true" />
+              </button>
+            </div>
+
             <p className="description">
               {producto.descripcion}
             </p>
@@ -312,16 +442,34 @@ const ProductPage = () => {
         <section className="similar-products">
           <h2>Ver <br/> Productos <br/> similares</h2>
           <div className="products-carousel">
-            {[1, 2, 3, 4, 5].map((item) => (
-              <div key={item} className="product-card">
-                <div className="product-placeholder">
-                  <span>Producto {item}</span>
-                </div>
-                <div className="card-overlay">
-                  <span>Nombre Producto</span>
+            {similarProducts.length === 0 ? (
+              <div className="product-card">
+                <div className="product-placeholder" style={{ padding: '15px', textAlign: 'center' }}>
+                  Cargando productos similares...
                 </div>
               </div>
-            ))}
+            ) : (
+              similarProducts.map((item) => {
+                const itemId = item.documentId || item.id;
+                const itemImage = item.imagenes && item.imagenes.length > 0 ? `http://localhost:1337${item.imagenes[0].url}` : camionero1;
+
+                return (
+                  <div
+                    key={itemId}
+                    className="product-card"
+                    onClick={() => navigate(`/producto/${itemId}`)}
+                    style={{ cursor: 'pointer' }}
+                    role="button"
+                    aria-label={`Ver ${item.nombre}`}
+                  >
+                    <img src={itemImage} alt={item.nombre || 'Mate similar'} />
+                    <div className="card-overlay" style={{ bottom: '0', padding: '8px' }}>
+                      <span>{item.nombre || 'Producto sin nombre'}</span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </section>
       </main>
