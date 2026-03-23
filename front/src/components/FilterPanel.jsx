@@ -26,16 +26,16 @@ const FilterPanel = ({ open, onClose, onApply }) => {
           
           <div className="filtro-subgrupo">
             <h5>Calabaza</h5>
-            <label><input type="checkbox" checked={filtrosActivos.includes('imperial')} onChange={() => toggleFiltro('imperial')} /> Imperial</label>
-            <label><input type="checkbox" checked={filtrosActivos.includes('torpedo')} onChange={() => toggleFiltro('torpedo')} /> Torpedo</label>
-            <label><input type="checkbox" checked={filtrosActivos.includes('camionero')} onChange={() => toggleFiltro('camionero')} /> Camionero</label>
+            <label><input type="checkbox" checked={filtrosActivos.includes('calabaza-imperial')} onChange={() => toggleFiltro('calabaza-imperial')} /> Imperial</label>
+            <label><input type="checkbox" checked={filtrosActivos.includes('calabaza-torpedo')} onChange={() => toggleFiltro('calabaza-torpedo')} /> Torpedo</label>
+            <label><input type="checkbox" checked={filtrosActivos.includes('calabaza-camionero')} onChange={() => toggleFiltro('calabaza-camionero')} /> Camionero</label>
           </div>
           
           <div className="filtro-subgrupo">
             <h5>Madera</h5>
-            <label><input type="checkbox" checked={filtrosActivos.includes('madera imperial')} onChange={() => toggleFiltro('madera imperial')} /> Imperial</label>
-            <label><input type="checkbox" checked={filtrosActivos.includes('madera torpedo')} onChange={() => toggleFiltro('madera torpedo')} /> Torpedo</label>
-            <label><input type="checkbox" checked={filtrosActivos.includes('madera camionero')} onChange={() => toggleFiltro('madera camionero')} /> Camionero</label>
+            <label><input type="checkbox" checked={filtrosActivos.includes('madera-imperial')} onChange={() => toggleFiltro('madera-imperial')} /> Imperial</label>
+            <label><input type="checkbox" checked={filtrosActivos.includes('madera-torpedo')} onChange={() => toggleFiltro('madera-torpedo')} /> Torpedo</label>
+            <label><input type="checkbox" checked={filtrosActivos.includes('madera-camionero')} onChange={() => toggleFiltro('madera-camionero')} /> Camionero</label>
           </div>
 
           <div className="filtro-subgrupo">

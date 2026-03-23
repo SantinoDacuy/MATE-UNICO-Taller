@@ -16,6 +16,7 @@ const ProductPage = () => {
   
   const [quantity, setQuantity] = useState(1);
   const [grabado, setGrabado] = useState(''); 
+  const [grabadoConfirmado, setGrabadoConfirmado] = useState(false); // NUEVO: Controla si ya apretó el botón
   
   const [availableColors, setAvailableColors] = useState([]);
   const [selectedColor, setSelectedColor] = useState(''); 
@@ -24,6 +25,16 @@ const ProductPage = () => {
   const [footerHtml, setFooterHtml] = useState('');
 
   const { addToCart, totalItems } = useContext(CartContext);
+
+  // --- LÓGICA DE PRECIOS BLINDADA ---
+  const PRECIO_GRABADO = 3000;
+  
+  // Usamos Number() para obligar a JS a sumar matemáticamente y no pegar textos
+  const precioBase = producto ? Number(producto.precio) : 0;
+  
+  // Solo sumamos los $3000 si el mate admite grabado Y el usuario ya hizo clic en "Agregar"
+  const precioUnitario = (producto?.grabado && grabadoConfirmado) ? precioBase + PRECIO_GRABADO : precioBase;
+  const precioTotal = precioUnitario * quantity;
 
   // =========================================================
   // 1. CARGAMOS EL DISEÑO (Header y Footer)
@@ -121,12 +132,25 @@ const ProductPage = () => {
   }, [id]);
 
   const handleAddToCart = () => {
-    addToCart(producto, quantity, selectedColor, grabado);
-    alert(`¡Mate ${selectedColor} agregado al carrito! 🛍️`);
+    // Si escribió algo pero se olvidó de tocar "Agregar", le avisamos!
+    if (producto.grabado && grabado.trim() !== '' && !grabadoConfirmado) {
+      alert("⚠️ Escribiste un grabado pero no tocaste el botón 'Agregar'. Confírmalo antes de añadir al carrito.");
+      return;
+    }
+
+    const textoGrabado = (producto.grabado && grabadoConfirmado) ? grabado.trim() : '';
+    
+    const productoParaCarrito = {
+      ...producto,
+      precio: precioUnitario
+    };
+
+    addToCart(productoParaCarrito, quantity, selectedColor, textoGrabado);
+    alert(`¡Mate agregado al carrito! 🛍️\nTotal: $${precioTotal.toLocaleString('es-AR')}`);
   };
 
   if (cargando) return <div style={{textAlign: 'center', marginTop: '100px'}}><h2>Calentando el agua para tu mate... 🧉</h2></div>;
-  if (!producto) return <div style={{textAlign: 'center', marginTop: '100px'}}><h2>Mate no encontrado</h2></div>;
+  if (!producto) return <div style={{textAlign: 'center', marginTop: '100px'}}><h2>Mate no encontrado 😥</h2></div>;
 
   return (
     <div className="page-wrapper">
@@ -215,32 +239,68 @@ const ProductPage = () => {
               )}
             </div>
 
-            {producto.material !== 'metal' && producto.material !== 'vidrio' ? (
-              <div className="engraving-section">
-                <input 
-                  type="text" 
-                  placeholder="Añadir Grabado" 
-                  value={grabado}
-                  onChange={(e) => setGrabado(e.target.value)}
-                />
-                <button className="btn-dark-small" onClick={() => alert("Grabado guardado")}>Agregar</button>
+            {/* --- SECCIÓN DE GRABADO --- */}
+            {producto.grabado ? (
+              <div className="engraving-section" style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <input 
+                    type="text" 
+                    placeholder="Añadir Grabado (+$3.000) (Ej: Iniciales)" 
+                    value={grabado}
+                    maxLength={15}
+                    onChange={(e) => {
+                      setGrabado(e.target.value);
+                      setGrabadoConfirmado(false); // Si edita el texto, le pedimos que vuelva a confirmar
+                    }}
+                    style={{ width: '100%', height: '42px', boxSizing: 'border-box' }}
+                  />
+                  <span style={{ 
+                    fontSize: '11px', 
+                    color: grabado.length === 15 ? '#d32f2f' : '#888', 
+                    marginTop: '4px', 
+                    textAlign: 'right',
+                    fontWeight: grabado.length === 15 ? 'bold' : 'normal'
+                  }}>
+                    {grabado.length}/15 caracteres
+                  </span>
+                </div>
+                <button 
+                  className="btn-dark-small" 
+                  onClick={() => {
+                    if (grabado.trim() === '') {
+                      alert("⚠️ Por favor, escribí lo que querés grabar antes de confirmar.");
+                      return;
+                    }
+                    setGrabadoConfirmado(true);
+                    alert(`✅ Grabado "${grabado}" confirmado (+ $3.000).`);
+                  }}
+                  style={{ 
+                    flexShrink: 0, 
+                    height: '42px', 
+                    padding: '0 20px', 
+                    whiteSpace: 'nowrap',
+                    backgroundColor: grabadoConfirmado ? '#2e7d32' : '#1a1a1a' // Se pone verde si ya confirmó
+                  }}
+                >
+                  {grabadoConfirmado ? '✓ Confirmado' : 'Agregar'}
+                </button>
               </div>
             ) : (
               <div className="engraving-section" style={{ opacity: 0.6 }}>
                 <input 
                   type="text" 
-                  placeholder="Grabado no disponible para este material" 
+                  placeholder="Este mate no admite grabado" 
                   disabled
-                  style={{ cursor: 'not-allowed', backgroundColor: '#f5f5f5' }}
+                  style={{ cursor: 'not-allowed', backgroundColor: '#f5f5f5', height: '42px' }}
                 />
-                <button className="btn-dark-small" disabled style={{ cursor: 'not-allowed' }}>
+                <button className="btn-dark-small" disabled style={{ cursor: 'not-allowed', height: '42px', flexShrink: 0 }}>
                   No disponible
                 </button>
               </div>
             )}
 
             <button className="btn-primary-block" onClick={handleAddToCart}>
-              Añadir al carrito - ${producto.precio * quantity}
+              Añadir al carrito - ${precioTotal.toLocaleString('es-AR')}
             </button>
           </div>
         </section>

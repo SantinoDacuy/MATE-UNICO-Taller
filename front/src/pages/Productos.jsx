@@ -71,7 +71,7 @@ const Productos = () => {
   }, [headerHtml, navigate]);
 
   // =========================================================
-  // 3. ACTUALIZAR NUMERITO DEL CARRITO Y ESCONDER BOTÓN DE FILTRO
+  // 3. ACTUALIZAR NUMERITO DEL CARRITO
   // =========================================================
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -81,7 +81,6 @@ const Productos = () => {
         badge.setAttribute('data-count', totalItems);
       }
       
-      // Escondemos el botón de filtro del Header porque acá tenemos el sidebar
       const btnFiltroHeader = document.getElementById('mu-filter-button');
       if (btnFiltroHeader) btnFiltroHeader.style.display = 'none';
     }, 50);
@@ -117,13 +116,13 @@ const Productos = () => {
       });
   }, []);
 
-  // --- MOTOR DE FILTRADO INTELIGENTE ---
+  // --- MOTOR DE FILTRADO INTELIGENTE (Versión EMBUDO ESTRICTO PERFECCIONADO) ---
   useEffect(() => {
     let resultado = [...productos];
     const queryParams = new URLSearchParams(location.search);
     const busquedaInicial = queryParams.get('q') || '';
 
-    // A. Buscador de texto del Header
+    // A. Buscador de texto
     if (busquedaInicial) {
       resultado = resultado.filter(prod => 
         prod.nombre.toLowerCase().includes(busquedaInicial.toLowerCase()) ||
@@ -131,23 +130,62 @@ const Productos = () => {
       );
     }
 
-    // B. Checkboxes
+    // B. Checkboxes (Lógica de Embudo Estricto / AND)
     if (filtrosActivos.length > 0) {
+      // Separamos los filtros activos en grupos
+      const coloresActivos = filtrosActivos.filter(f => ['negro', 'marron', 'blanco', 'gris'].includes(f));
+      const matesActivos = filtrosActivos.filter(f => [
+        'calabaza-imperial', 'calabaza-torpedo', 'calabaza-camionero',
+        'madera-imperial', 'madera-torpedo', 'madera-camionero',
+        'metal', 'vidrio'
+      ].includes(f));
+      const combosActivos = filtrosActivos.filter(f => ['combo_simple', 'combo_completo'].includes(f));
+
       resultado = resultado.filter(prod => {
-        const cumpleColor = 
-          (filtrosActivos.includes('negro') && prod.color_negro === true) ||
-          (filtrosActivos.includes('marron') && prod.color_marron === true) ||
-          (filtrosActivos.includes('blanco') && prod.color_blanco === true) ||
-          (filtrosActivos.includes('gris') && prod.color_gris === true);
+        let pasaColor = true;
+        let pasaMate = true;
+        let pasaCombo = true;
 
-        const cumpleCategoriaOMaterial = filtrosActivos.some(filtro => 
-          prod.categoria === filtro || prod.material === filtro
-        );
+        if (coloresActivos.length > 0) {
+          pasaColor = coloresActivos.some(color => {
+            if (color === 'negro') return prod.color_negro === true;
+            if (color === 'marron') return prod.color_marron === true;
+            if (color === 'blanco') return prod.color_blanco === true;
+            if (color === 'gris') return prod.color_gris === true;
+            return false;
+          });
+        }
 
-        const textoNombre = prod.nombre.toLowerCase();
-        const cumpleNombre = filtrosActivos.some(filtro => textoNombre.includes(filtro));
+        if (matesActivos.length > 0) {
+          pasaMate = matesActivos.some(filtro => {
+            if (filtro === 'calabaza-imperial') return prod.material === 'calabaza' && prod.modelo === 'imperial';
+            if (filtro === 'calabaza-torpedo') return prod.material === 'calabaza' && prod.modelo === 'torpedo';
+            if (filtro === 'calabaza-camionero') return prod.material === 'calabaza' && prod.modelo === 'camionero';
+            
+            if (filtro === 'madera-imperial') return prod.material === 'madera' && prod.modelo === 'imperial';
+            if (filtro === 'madera-torpedo') return prod.material === 'madera' && prod.modelo === 'torpedo';
+            if (filtro === 'madera-camionero') return prod.material === 'madera' && prod.modelo === 'camionero';
+            
+            if (filtro === 'metal') return prod.material === 'metal';
+            if (filtro === 'vidrio') return prod.material === 'vidrio';
+            return false;
+          });
+        }
 
-        return cumpleColor || cumpleCategoriaOMaterial || cumpleNombre;
+        // ACÁ ESTÁ LA NUEVA MAGIA PARA LOS COMBOS
+        if (combosActivos.length > 0) {
+          pasaCombo = combosActivos.some(filtro => {
+            if (filtro === 'combo_simple') return prod.categoria === 'combo_simple';
+            if (filtro === 'combo_completo') return prod.categoria === 'combo_completo';
+            return false;
+          });
+        } else if (matesActivos.length > 0) {
+          // Si eligió un tipo de mate pero NO eligió combo, ocultamos los combos obligatoriamente
+          pasaCombo = prod.categoria !== 'combo_simple' && prod.categoria !== 'combo_completo';
+        }
+
+        // Tiene que pasar todas las pruebas activas
+        return pasaColor && pasaMate && pasaCombo;
       });
     }
 
@@ -183,18 +221,24 @@ const Productos = () => {
           
           <div className="filtro-grupo">
             <h4>Mate</h4>
+            
+            {/* GRUPO CALABAZA */}
             <div className="filtro-subgrupo">
               <h5>Calabaza</h5>
-              <label><input type="checkbox" checked={filtrosActivos.includes('imperial')} onChange={() => toggleFiltro('imperial')} /> Imperial</label>
-              <label><input type="checkbox" checked={filtrosActivos.includes('torpedo')} onChange={() => toggleFiltro('torpedo')} /> Torpedo</label>
-              <label><input type="checkbox" checked={filtrosActivos.includes('camionero')} onChange={() => toggleFiltro('camionero')} /> Camionero</label>
+              <label><input type="checkbox" checked={filtrosActivos.includes('calabaza-imperial')} onChange={() => toggleFiltro('calabaza-imperial')} /> Imperial</label>
+              <label><input type="checkbox" checked={filtrosActivos.includes('calabaza-torpedo')} onChange={() => toggleFiltro('calabaza-torpedo')} /> Torpedo</label>
+              <label><input type="checkbox" checked={filtrosActivos.includes('calabaza-camionero')} onChange={() => toggleFiltro('calabaza-camionero')} /> Camionero</label>
             </div>
+            
+            {/* GRUPO MADERA */}
             <div className="filtro-subgrupo">
               <h5>Madera</h5>
-              <label><input type="checkbox" checked={filtrosActivos.includes('madera imperial')} onChange={() => toggleFiltro('madera imperial')} /> Imperial</label>
-              <label><input type="checkbox" checked={filtrosActivos.includes('madera torpedo')} onChange={() => toggleFiltro('madera torpedo')} /> Torpedo</label>
-              <label><input type="checkbox" checked={filtrosActivos.includes('madera camionero')} onChange={() => toggleFiltro('madera camionero')} /> Camionero</label>
+              <label><input type="checkbox" checked={filtrosActivos.includes('madera-imperial')} onChange={() => toggleFiltro('madera-imperial')} /> Imperial</label>
+              <label><input type="checkbox" checked={filtrosActivos.includes('madera-torpedo')} onChange={() => toggleFiltro('madera-torpedo')} /> Torpedo</label>
+              <label><input type="checkbox" checked={filtrosActivos.includes('madera-camionero')} onChange={() => toggleFiltro('madera-camionero')} /> Camionero</label>
             </div>
+            
+            {/* OTROS */}
             <div className="filtro-subgrupo">
               <h5>Metal</h5>
               <label><input type="checkbox" checked={filtrosActivos.includes('metal')} onChange={() => toggleFiltro('metal')} /> Metal</label>
@@ -205,6 +249,7 @@ const Productos = () => {
             </div>
           </div>
 
+          {/* COMBOS */}
           <div className="filtro-grupo">
             <h4>Combos</h4>
             <label className="filtro-suelto">
@@ -217,6 +262,7 @@ const Productos = () => {
             </label>
           </div>
 
+          {/* COLORES */}
           <div className="filtro-grupo">
             <h4>Colores</h4>
             <div className="colores-grid">

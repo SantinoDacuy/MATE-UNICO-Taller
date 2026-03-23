@@ -22,8 +22,22 @@
   border-radius: 12px;
   border: 1px solid #eaeaea;
   height: fit-content;
+  
+  /* LA MAGIA DEL STICKY REPARADA */
   position: sticky;
   top: 100px;
+  align-self: start; /* Esto evita que la grilla estire la barra */
+  max-height: calc(100vh - 120px); /* Le da tope de altura */
+  overflow-y: auto; /* Scroll interno si sobran filtros */
+}
+
+/* Para que el scroll interno de la barra sea finito y sutil */
+.catalogo-sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+.catalogo-sidebar::-webkit-scrollbar-thumb {
+  background-color: #ccc;
+  border-radius: 4px;
 }
 
 .catalogo-sidebar h3 {

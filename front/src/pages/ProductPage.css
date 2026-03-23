@@ -175,14 +175,17 @@
 /* Engraving */
 .engraving-section {
   display: flex;
+  align-items: flex-start;
   gap: 10px;
   margin-bottom: 20px;
 }
 
 .engraving-section input {
-  flex: 1;
+  width: 100%;
+  height: 42px;
   padding: 10px;
   border: 1px solid #ccc;
+  box-sizing: border-box;
 }
 
 .btn-dark-small {
@@ -192,6 +195,9 @@
   padding: 0 20px;
   cursor: pointer;
   font-size: 0.8rem;
+  height: 42px;
+  flex-shrink: 0; 
+  white-space: nowrap; 
 }
 
 .btn-primary-block {

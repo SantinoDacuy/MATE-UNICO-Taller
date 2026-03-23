@@ -1,3 +1,8 @@
+--Trabajo Final Base de Datos
+--Carballo Tobias, Dacuy Santino, Lucrecia Pereyra
+
+--1A) Creacion de BD, reglas y controles
+
 --PARTE UNO = Creación de dominios
 CREATE DOMAIN estado_v AS VARCHAR(15)
 	CHECK (VALUE IN ('Pendiente', 'Confirmado', 'Cancelado'));
@@ -66,6 +71,12 @@ CREATE TABLE Combo (
  cantidad_disp INT NOT NULL CHECK (cantidad_disp >= 0),
  umbral_min INT DEFAULT 5 CHECK (umbral_min >= 0)
 );
+
+ALTER TABLE Combo ADD COLUMN precio DECIMAL(10,2); --agregamos columna precio
+UPDATE Combo SET precio = 35000 WHERE precio IS NULL; --definimos precio para q no sea null
+
+ALTER TABLE Combo ALTER COLUMN precio SET NOT NULL; --restriccion para que precio no puede ser nunca nulo
+ALTER TABLE Combo ADD CONSTRAINT check_precio_combo CHECK (precio > 0); --restriccion para que el precio sea siempre mayor q 0
 
 --Tablas con dependencias
 --5) Usuario
@@ -193,3 +204,34 @@ CHECK (
  (id_producto IS NULL AND id_combo IS NOT NULL) OR
  (id_producto IS NOT NULL AND id_combo IS NULL)
 );
+
+
+
+--1B) Restricciones tipo CHECK
+
+--1) Detalle_venta: exclusion mutua (que se venda o un mate, o un combo, no ambas ni ninguna)
+ALTER TABLE Detalle_venta
+ADD CONSTRAINT chk_detalle_exlusion
+CHECK (
+	(id_producto IS NOT NULL AND id_combo IS NULL) OR
+	(id_producto IS NULL AND id_combo IS NOT NULL)
+);
+
+--2) Cupon: fechas logicas (la fecha de vencimiento debe ser igual o posterior a la de inicio)
+ALTER TABLE Cupon
+ADD CONSTRAINT chk_cupon_fechas
+CHECK (fecha_vencimiento >= fecha_inicio);
+
+--3) Venta: total positivo (el total de pago nunca debe ser negativo, aun con descuentos)
+ALTER TABLE Venta
+ADD CONSTRAINT chk_venta_total_positvo
+CHECK (total >= 0);
+
+--4) Reseñas: calificacion del 1 al 5 para producto y combo
+ALTER TABLE Reseña_producto
+ADD CONSTRAINT chk_reseña_prod_calificacion
+CHECK (calificacion >= 1 AND calificacion <= 5);
+
+ALTER TABLE Reseña_combo
+ADD CONSTRAINT chk_reseña_combo_calificacion
+CHECK (calificacion >= 1 AND calificacion <= 5);

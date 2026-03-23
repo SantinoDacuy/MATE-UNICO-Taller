@@ -28,7 +28,7 @@ const Hero = () => {
       <div className="hero-right">
         <h1>¡Bienvenidos a nuestra Tienda de Mates!</h1>
         <p>Descubrí un espacio pensado para los amantes del mate. Acá vas a encontrar mates de todo tipo, bombillas, bolsos y accesorios de calidad, ideales para acompañar cada momento de tu día. Queremos que disfrutes de la tradición con estilo y comodidad.</p>
-        <button className="cta" onClick={() => navigate('/producto/wi7cwnvkdxm782iu6vbchsuk')}>Ver ahora</button>
+        <button className="cta" onClick={() => navigate('/producto/och1hcctif58zqukyyg9kd0p')}>Ver ahora</button>
       </div>
     </section>
   );
