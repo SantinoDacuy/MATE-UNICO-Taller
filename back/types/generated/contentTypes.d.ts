@@ -489,6 +489,7 @@ export interface ApiProductoProducto extends Struct.CollectionTypeSchema {
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     descripcion: Schema.Attribute.Text;
+    grabado: Schema.Attribute.Boolean;
     imagenes: Schema.Attribute.Media<
       'images' | 'files' | 'videos' | 'audios',
       true
@@ -502,6 +503,7 @@ export interface ApiProductoProducto extends Struct.CollectionTypeSchema {
     material: Schema.Attribute.Enumeration<
       ['calabaza', 'madera', 'metal', 'vidrio']
     >;
+    modelo: Schema.Attribute.Enumeration<['imperial', 'torpedo', 'camionero']>;
     nombre: Schema.Attribute.String;
     precio: Schema.Attribute.BigInteger;
     publishedAt: Schema.Attribute.DateTime;

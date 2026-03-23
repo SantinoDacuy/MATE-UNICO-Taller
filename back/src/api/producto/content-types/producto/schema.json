@@ -58,6 +58,17 @@
         "metal",
         "vidrio"
       ]
+    },
+    "modelo": {
+      "type": "enumeration",
+      "enum": [
+        "imperial",
+        "torpedo",
+        "camionero"
+      ]
+    },
+    "grabado": {
+      "type": "boolean"
     }
   }
 }
