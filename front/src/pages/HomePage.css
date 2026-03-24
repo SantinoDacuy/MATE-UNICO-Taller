@@ -16,7 +16,7 @@
     background-color: #000; /* Fondo base negro */
     background-size: cover;
     background-position: center;
-    background-attachment: fixed; /* Efecto parallax sutil */
+    background-attachment: scroll; /* Efecto parallax sutil */
     
     /* Efecto de desenfoque y oscurecimiento sobre la imagen (si se usa) */
     position: relative;

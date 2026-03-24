@@ -255,7 +255,7 @@ app.get('/api/user/me/ventas', async (req, res) => {
         // For each venta, get its details if they exist
         for (let venta of ventas) {
             try {
-                const detallesQuery = `SELECT dv.id_producto, dv.cantidad, dv.precio_unitario, dv.subtotal, dv.nombre_producto
+                const detallesQuery = `SELECT dv.id_producto, dv.cantidad, dv.precio_unitario, dv.subtotal
                     FROM detalle_venta dv
                     WHERE dv.id_venta = ${venta.id}`;
                 const { rows: detalles } = await db.query(detallesQuery);
@@ -267,7 +267,7 @@ app.get('/api/user/me/ventas', async (req, res) => {
                     subtotal: d.subtotal,
                     id_producto: d.id_producto,
                     producto: {
-                        material: d.nombre_producto || 'Producto'
+                        material: 'Producto'
                     }
                 }));
             } catch (detailErr) {
@@ -387,10 +387,39 @@ app.post('/debug/seed_session', (req, res) => {
 });
 
 // Endpoint para obtener el usuario logueado (si hay sesión)
+app.post('/api/user/me', async (req, res) => {
+    if (!req.session || !req.session.userId) return res.status(401).json({ error: 'No logueado' });
+    const { nombre, apellido, telefono, calle, numero, provincia, ciudad } = req.body;
+    try {
+        let ciudadId = null;
+        if (ciudad && provincia) {
+            const { rows: findCiudad } = await db.query("SELECT ciudad_id FROM Ciudad WHERE nombre=$1 AND provincia=$2", [ciudad, provincia]);
+            if (findCiudad.length > 0) {
+                ciudadId = findCiudad[0].ciudad_id;
+            } else {
+                const ins = await db.query("INSERT INTO Ciudad (nombre, CP, provincia) VALUES ($1, $2, $3) RETURNING ciudad_id", [ciudad, null, provincia]);
+                ciudadId = ins.rows[0].ciudad_id;
+            }
+        }
+        await db.query(
+            'UPDATE Usuario SET nombre=$1, apellido=$2, telefono=$3, calle=$4, numero=$5, id_ciudad=$6 WHERE id=$7',
+            [nombre, apellido, telefono, calle, Number(numero) || null, ciudadId, req.session.userId]
+        );
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Update profile Error:', err);
+        res.status(500).json({ error: 'DB error' });
+    }
+});
 app.get('/auth/me', async (req, res) => {
     if (!req.session || !req.session.userId) return res.status(401).json({ loggedIn: false });
     try {
-        const { rows } = await db.query('SELECT id, email, nombre, apellido FROM Usuario WHERE id = $1', [req.session.userId]);
+        const { rows } = await db.query(`
+            SELECT u.id, u.email, u.nombre, u.apellido, u.telefono, u.calle, u.numero, c.nombre as ciudad, c.provincia
+            FROM Usuario u
+            LEFT JOIN Ciudad c ON u.id_ciudad = c.ciudad_id
+            WHERE u.id = $1
+        `, [req.session.userId]);
         if (!rows || rows.length === 0) return res.status(404).json({ loggedIn: false });
         return res.json({ loggedIn: true, user: rows[0] });
     } catch (err) {
@@ -420,34 +449,35 @@ app.post('/api/checkout/procesar', async (req, res) => {
     try {
         await db.query('BEGIN');
 
-        // Alter table to add nombre_producto if not exists
-        await db.query('ALTER TABLE detalle_venta ADD COLUMN IF NOT EXISTS nombre_producto VARCHAR(255)');
-
         const subtotalVenta = cart.reduce((acc, item) => acc + (Number(item.precio) * Number(item.cantidad)), 0);
         const totalFinal = checkoutData.totalFinal || (subtotalVenta + 4000);
 
         console.log(`Iniciando compra para usuario ID: ${userId}`);
 
-        // 1. Insertar en venta (todo minúsculas, sin comillas)
         const ventaRes = await db.query(
-            `INSERT INTO venta (id_usuario, fecha_venta, subtotal, descuento, total, estado, metodo_pago)
-             VALUES ($1, CURRENT_DATE, $2, $3, $4, 'Pendiente', 'Mercado Pago')
+            `INSERT INTO venta (id_usuario, fecha_venta, subtotal, descuento, total, estado, metodo_pago, id_cupon)
+             VALUES ($1, CURRENT_DATE, $2, $3, $4, 'Pendiente', 'Mercado Pago', $5)
              RETURNING id`,
-            [userId, subtotalVenta, 0, totalFinal]
+            [userId, subtotalVenta, checkoutData.descuento || 0, totalFinal, checkoutData.id_cupon || null]
         );
 
         const ventaId = ventaRes.rows[0].id;
+        
+        if (checkoutData.id_cupon) {
+            await db.query('UPDATE Cupon SET usado = true WHERE id = $1', [checkoutData.id_cupon]);
+        }
 
         // 2. Insertar en detalle_venta
         for (const item of cart) {
-            let prodId = item.documentId || item.id.toString();
-            const nombreProd = item.nombre || 'Producto';
+            let prodId = parseInt(item.id, 10);
+            if (isNaN(prodId)) prodId = null; //Fallback if still string
+            
             const subtotalItem = Number(item.precio) * Number(item.cantidad);
 
             await db.query(
-                `INSERT INTO detalle_venta (id_venta, id_producto, cantidad, precio_unitario, subtotal, total, nombre_producto)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-                [ventaId, prodId, item.cantidad, item.precio, subtotalItem, subtotalItem, nombreProd]
+                `INSERT INTO detalle_venta (id_venta, id_producto, cantidad, precio_unitario, subtotal, total)
+                 VALUES ($1, $2, $3, $4, $5, $6)`,
+                [ventaId, prodId, item.cantidad, item.precio, subtotalItem, subtotalItem]
             );
         }
 
@@ -459,6 +489,25 @@ app.post('/api/checkout/procesar', async (req, res) => {
         await db.query('ROLLBACK');
         console.error('❌ ERROR SQL REAL:', err.message);
         res.status(500).json({ error: err.message });
+    }
+});
+
+// GET cupon parameters
+app.get('/api/cupones/:code', async (req, res) => {
+    try {
+        const { code } = req.params;
+        const { rows } = await db.query(
+            "SELECT id, tipo_descuento, valor_descuento FROM Cupon WHERE codigo = $1 AND activo = true AND usado = false AND CURRENT_DATE BETWEEN fecha_inicio AND fecha_vencimiento",
+            [code.toUpperCase()]
+        );
+        if (rows.length > 0) {
+            res.json({ success: true, id_cupon: rows[0].id, tipo: rows[0].tipo_descuento, valor: rows[0].valor_descuento });
+        } else {
+            res.json({ success: false, message: 'Cupón inválido o expirado' });
+        }
+    } catch (error) {
+        console.error('Coupon DB Error:', error);
+        res.status(500).json({ success: false, message: 'Error de servidor verificando cupón' });
     }
 });
 

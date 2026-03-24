@@ -21,8 +21,6 @@ const PagoEnvio = () => {
     localStorage.getItem('shippingMethod') || 'oca'
   );
   
-  const [headerHtml, setHeaderHtml] = useState('');
-  const [footerHtml, setFooterHtml] = useState('');
   const [error, setError] = useState('');
 
   const metodoActual = SHIPPING_METHODS.find(m => m.id === metodoSeleccionado);
@@ -33,71 +31,6 @@ const PagoEnvio = () => {
   useEffect(() => {
     localStorage.setItem('shippingMethod', metodoSeleccionado);
   }, [metodoSeleccionado]);
-
-  // =========================================================
-  // 1. CARGAMOS EL DISEÑO (Header y Footer)
-  // =========================================================
-  useEffect(() => {
-    Promise.all([
-      fetch('/src/components/header.html').then(r => r.text()).catch(() => ''),
-      fetch('/src/components/footer.html').then(r => r.text()).catch(() => '')
-    ]).then(([header, footer]) => {
-      setHeaderHtml(header);
-      setFooterHtml(footer);
-    });
-
-    if (!document.querySelector('link[href="/src/components/styles.css"]')) {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = '/src/components/styles.css';
-      document.head.appendChild(link);
-    }
-  }, []);
-
-  // =========================================================
-  // 2. EL CEREBRO BLINDADO: Pone tu nombre de forma segura
-  // =========================================================
-  useEffect(() => {
-    if (!headerHtml) return;
-
-    const timer = setTimeout(async () => {
-      try {
-        const res = await fetch('http://localhost:3001/api/user/me', { credentials: 'include' });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.loggedIn && data.user) {
-            const profileNameEl = document.getElementById('mu-profile-name');
-            if (profileNameEl) {
-              profileNameEl.textContent = (data.user.nombre || 'Usuario').split(' ')[0];
-            }
-            const btnPerfil = document.getElementById('header-link-perfil');
-            if (btnPerfil) {
-              btnPerfil.onclick = (e) => {
-                e.preventDefault();
-                navigate('/perfil');
-              };
-            }
-          }
-        }
-      } catch (err) {}
-    }, 50);
-
-    return () => clearTimeout(timer);
-  }, [headerHtml, navigate]);
-
-  // =========================================================
-  // 3. ACTUALIZAR NUMERITO DEL CARRITO
-  // =========================================================
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const badge = document.getElementById('mu-cart-badge');
-      if (badge) {
-        badge.textContent = totalItems;
-        badge.setAttribute('data-count', totalItems);
-      }
-    }, 50);
-    return () => clearTimeout(timer);
-  }, [totalItems, headerHtml]);
 
   const handleContinue = () => {
     if (cart.length === 0) {
@@ -114,7 +47,6 @@ const PagoEnvio = () => {
 
   return (
     <div className="pago-envio-page">
-      <div id="header-root" dangerouslySetInnerHTML={{ __html: headerHtml }} />
       <div className="page-path" style={{paddingLeft: '50px', paddingTop: '20px'}}>Home &gt; Checkout</div>
 
       <main className="checkout-contenedor-principal">
@@ -192,7 +124,6 @@ const PagoEnvio = () => {
           <button className="btn-continuar" onClick={handleContinue}>Continuar al Pago</button>
         </section>
       </main>
-      <div id="footer-root" dangerouslySetInnerHTML={{ __html: footerHtml }} />
     </div>
   );
 };

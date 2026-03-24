@@ -1,7 +1,9 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { CartProvider } from './context/CartContext';
-import './App.css';
+import Header from './components/Header';
+import Footer from './components/Footer';
+import './components/styles.css';
 import ProductPage from './pages/ProductPage';
 import Home from './pages/Home';
 import HomePage from './pages/HomePage';
@@ -14,28 +16,39 @@ import PagoTarjeta from './pages/Pago-tarjeta';
 import Final from './pages/Final';
 import Login from './pages/HomePage';
 
+const Layout = () => {
+  const location = useLocation();
+  const hideHeaderFooter = location.pathname === '/login';
+
+  return (
+    <>
+      {!hideHeaderFooter && <Header />}
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/productos" element={<Productos />} />
+        <Route path="/producto/:id?" element={<ProductPage />} />
+        <Route path="/home" element={<Home />} />
+        <Route path="/login" element={<HomePage />} />
+        <Route path="/perfil" element={<UserProfile />} />
+        <Route path="/carrito" element={<Carrito />} />
+        <Route path="/direccion-pago" element={<PagoDireccion />} />
+        <Route path="/pago-envio" element={<PagoEnvio />} />
+        <Route path="/pago-tarjeta" element={<PagoTarjeta />} />
+        <Route path="/final" element={<Final />} />
+      </Routes>
+      {!hideHeaderFooter && <Footer />}
+    </>
+  );
+};
 
 const App = () => {
   return (
-    // ENVOLVEMOS TODO CON EL CARTPROVIDER
     <CartProvider>
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/productos" element={<Productos />} />
-          <Route path="/producto/:id?" element={<ProductPage />} />
-          <Route path="/home" element={<Home />} />
-          <Route path="/login" element={<HomePage />} />
-          <Route path="/perfil" element={<UserProfile />} />
-          <Route path="/carrito" element={<Carrito />} />
-          <Route path="/direccion-pago" element={<PagoDireccion />} />
-          <Route path="/pago-envio" element={<PagoEnvio />} />
-          <Route path="/pago-tarjeta" element={<PagoTarjeta />} />
-          <Route path="/final" element={<Final />} />
-        </Routes>
+        <Layout />
       </BrowserRouter>
     </CartProvider>
   );
 };
 
-export default App;
+export default App;

@@ -171,131 +171,16 @@ const Help = () => (
 );
 
 const Home = () => {
-  const [headerHtml, setHeaderHtml] = useState('');
-  const [footerHtml, setFooterHtml] = useState('');
   const [filterOpen, setFilterOpen] = useState(false);
   const navigate = useNavigate();
 
   const { totalItems } = useContext(CartContext);
 
   useEffect(() => {
-    Promise.all([
-      fetch('/src/components/header.html').then(r => r.text()).catch(() => ''),
-      fetch('/src/components/footer.html').then(r => r.text()).catch(() => '')
-    ]).then(([header, footer]) => {
-      setHeaderHtml(header);
-      setFooterHtml(footer);
-    });
-
-    if (!document.querySelector('link[href="/src/components/styles.css"]')) {
-      const l = document.createElement('link');
-      l.rel = 'stylesheet';
-      l.href = '/src/components/styles.css';
-      document.head.appendChild(l);
-    }
+    const handleOpenFilter = () => setFilterOpen(true);
+    window.addEventListener('openFilter', handleOpenFilter);
+    return () => window.removeEventListener('openFilter', handleOpenFilter);
   }, []);
-
-  useEffect(() => {
-    const badge = document.getElementById('mu-cart-badge');
-    if (badge) {
-      badge.textContent = totalItems;
-      badge.setAttribute('data-count', totalItems);
-    }
-  }, [totalItems, headerHtml]);
-
-  useEffect(() => {
-    const container = document.getElementById('header-root');
-    if (!container) return;
-    const insertButton = () => {
-      const rightArea = container.querySelector('.mu-header__right');
-      if (!rightArea) return;
-      let btn = document.getElementById('mu-filter-button');
-      if (!btn) {
-        btn = document.createElement('button');
-        btn.id = 'mu-filter-button';
-        btn.className = 'mu-filter-link';
-        btn.textContent = 'Filtrar';
-        const profileArea = rightArea.querySelector('.mu-profile');
-        if (profileArea) {
-          rightArea.insertBefore(btn, profileArea);
-        } else {
-          rightArea.appendChild(btn);
-        }
-      }
-      btn.style.display = 'inline-block';
-      btn.onclick = () => setFilterOpen(true);
-    };
-
-    const observer = new MutationObserver(() => insertButton());
-    observer.observe(container, { childList: true, subtree: true });
-    insertButton();
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    const btn = document.getElementById('mu-filter-button');
-    if (btn) btn.style.display = 'inline-block';
-  }, [filterOpen]);
-
-  useEffect(() => {
-    const checkUserStatus = async () => {
-      let isUserLoggedIn = false;
-
-      try {
-        const res = await fetch('http://localhost:3001/api/user/me', { credentials: 'include' });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.loggedIn && data.user) {
-            isUserLoggedIn = true;
-            
-            const profileNameEl = document.getElementById('mu-profile-name');
-            if (profileNameEl) {
-              const firstName = (data.user.nombre || 'Usuario').split(' ')[0];
-              profileNameEl.textContent = firstName;
-            }
-
-            const btnLogout = document.getElementById('mu-logout-button');
-            if (btnLogout) {
-              btnLogout.style.display = 'block';
-              btnLogout.onclick = async (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                try {
-                  await fetch('http://localhost:3001/auth/logout', { method: 'POST', credentials: 'include' });
-                } catch(err) {}
-                localStorage.removeItem('google_token');
-                window.location.replace('/'); 
-              };
-            }
-          }
-        }
-      } catch (error) {
-        console.warn('Error checking user status:', error);
-      }
-
-      const btnPerfil = document.getElementById('header-link-perfil');
-      if (btnPerfil) {
-        btnPerfil.onclick = (e) => {
-          if (e.target.id === 'mu-logout-button') return;
-          e.preventDefault();
-          navigate(isUserLoggedIn ? '/perfil' : '/login');
-        };
-      }
-    };
-
-    const container = document.getElementById('header-root');
-    if (container && container.innerHTML.trim() !== "") {
-      checkUserStatus();
-    } else if (container) {
-      const observer = new MutationObserver(() => {
-        if (container.innerHTML.trim() !== "") {
-          checkUserStatus();
-          observer.disconnect();
-        }
-      });
-      observer.observe(container, { childList: true, subtree: true });
-    }
-  }, [headerHtml, navigate]);
 
   const applyFilters = (filtrosActivos) => {
     if (filtrosActivos && filtrosActivos.length > 0) {
@@ -309,7 +194,6 @@ const Home = () => {
 
   return (
     <div className="home-page-container">
-      <div id="header-root" dangerouslySetInnerHTML={{ __html: headerHtml }} />
       <main className="home-content">
         <Hero />
         {filterOpen && <div className="filter-overlay" onClick={() => setFilterOpen(false)} />}
@@ -319,7 +203,6 @@ const Home = () => {
         <Carousel images={[carrusel1, carrusell2, carrusel3]} />
         <Help />
       </main>
-      <div id="footer-root" dangerouslySetInnerHTML={{ __html: footerHtml }} />
     </div>
   );
 };

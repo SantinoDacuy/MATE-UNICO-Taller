@@ -23,10 +23,7 @@ export default function UserProfile() {
         picture: ''
     });
 
-    const [headerHtml, setHeaderHtml] = useState('');
-    const [footerHtml, setFooterHtml] = useState('');
-
-    // 1. CARGAMOS DISEÑO Y PROVINCIAS
+    // 1. CARGAMOS PROVINCIAS
     useEffect(() => {
         fetch('https://apis.datos.gob.ar/georef/api/provincias?campos=id,nombre')
             .then(res => res.json())
@@ -34,21 +31,6 @@ export default function UserProfile() {
                 setProvincias(data.provincias.sort((a, b) => a.nombre.localeCompare(b.nombre)));
             })
             .catch(err => console.error("Error provincias:", err));
-
-        Promise.all([
-            fetch('/src/components/header.html').then(r => r.text()).catch(() => ''),
-            fetch('/src/components/footer.html').then(r => r.text()).catch(() => '')
-        ]).then(([header, footer]) => {
-            setHeaderHtml(header);
-            setFooterHtml(footer);
-        });
-
-        if (!document.querySelector('link[href="/src/components/styles.css"]')) {
-            const l = document.createElement('link');
-            l.rel = 'stylesheet';
-            l.href = '/src/components/styles.css';
-            document.head.appendChild(l);
-        }
     }, []);
 
     // 2. CARGAR MUNICIPIOS
@@ -67,9 +49,7 @@ export default function UserProfile() {
 
     // 3. CARGAR DATOS USUARIO
     useEffect(() => {
-        if (!headerHtml) return;
-
-        const timer = setTimeout(async () => {
+        const fetchUserData = async () => {
             try {
                 const res = await fetch('http://localhost:3001/api/user/me', { credentials: 'include' });
                 if (res.ok) {
@@ -86,36 +66,28 @@ export default function UserProfile() {
                             ciudad: data.user.ciudad || '',
                             picture: data.user.picture || ''
                         });
-
-                        const profileNameEl = document.getElementById('mu-profile-name');
-                        if (profileNameEl) profileNameEl.textContent = "Perfil";
-
-                        const btnLogout = document.getElementById('mu-logout-button');
-                        if (btnLogout) {
-                            btnLogout.style.display = 'block';
-                            btnLogout.onclick = async (e) => {
-                                e.preventDefault();
-                                try { await fetch('http://localhost:3001/auth/logout', { method: 'POST', credentials: 'include' }); } catch (err) { }
-                                localStorage.removeItem('google_token');
-                                window.location.replace('/');
-                            };
-                        }
+                    } else {
+                        navigate('/login');
                     }
+                } else {
+                    navigate('/login');
                 }
 
                 const vres = await fetch('http://localhost:3001/api/user/me/ventas', { credentials: 'include' });
                 if (vres.ok) {
                     const vdata = await vres.json();
-                    if (vdata.success && Array.isArray(vdata.ventas)) setVentas(vdata.ventas);
+                    if (vdata.success && Array.isArray(vdata.ventas)) {
+                        setVentas(vdata.ventas);
+                    }
                 }
             } catch (e) {
                 console.error('Error loading profile:', e);
             } finally {
                 setLoading(false);
             }
-        }, 50);
-        return () => clearTimeout(timer);
-    }, [headerHtml, navigate]);
+        };
+        fetchUserData();
+    }, [navigate]);
 
     async function saveProfile(e) {
         e.preventDefault();
@@ -130,13 +102,12 @@ export default function UserProfile() {
         } catch (err) { alert('Error al guardar'); }
     }
 
-    if (loading || !headerHtml) return <div style={{ textAlign: 'center', padding: '50px' }}>Cargando...</div>;
+    if (loading) return <div style={{ textAlign: 'center', padding: '50px' }}>Cargando...</div>;
 
     const miembroDesde = user?.fecha_registro ? new Date(user.fecha_registro).toLocaleDateString('es-AR') : '27/02/2026';
 
     return (
         <div className="profile-page">
-            <div id="header-root" dangerouslySetInnerHTML={{ __html: headerHtml }} />
             <div className="profile-container">
                 <aside className="left-column">
                     <section className="user-info">
@@ -232,7 +203,6 @@ export default function UserProfile() {
                     </form>
                 </main>
             </div>
-            <div id="footer-root" dangerouslySetInnerHTML={{ __html: footerHtml }} />
         </div>
     );
 }

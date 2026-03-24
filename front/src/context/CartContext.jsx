@@ -26,7 +26,7 @@ export const CartProvider = ({ children }) => {
   const addToCart = (producto, cantidad, color, grabado) => {
     setCart((prevCart) => {
       const itemIndex = prevCart.findIndex(
-        (item) => item.id === producto.documentId && item.color === color && item.grabado === grabado
+        (item) => item.id === producto.id && item.color === color && item.grabado === grabado
       );
 
       if (itemIndex !== -1) {
@@ -40,7 +40,8 @@ export const CartProvider = ({ children }) => {
         return [
           ...prevCart,
           {
-            id: producto.documentId,
+            id: producto.id,
+            documentId: producto.documentId,
             nombre: producto.nombre,
             precio: producto.precio,
             imagen: producto.imagenes?.length > 0 ? producto.imagenes[0].url : null,

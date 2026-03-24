@@ -21,8 +21,7 @@ const ProductPage = () => {
   const [availableColors, setAvailableColors] = useState([]);
   const [selectedColor, setSelectedColor] = useState(''); 
   
-  const [headerHtml, setHeaderHtml] = useState('');
-  const [footerHtml, setFooterHtml] = useState('');
+
 
   const { addToCart, totalItems } = useContext(CartContext);
 
@@ -66,87 +65,23 @@ const ProductPage = () => {
   const precioUnitario = (producto?.grabado && grabadoConfirmado) ? precioBase + PRECIO_GRABADO : precioBase;
   const precioTotal = precioUnitario * quantity;
 
-  // =========================================================
-  // 1. CARGAMOS EL DISEÑO (Header y Footer)
-  // =========================================================
+  // Efecto para verificar si el usuario está logeado para ciertas acciones
   useEffect(() => {
-    Promise.all([
-      fetch('/src/components/header.html').then(r => r.text()).catch(() => ''),
-      fetch('/src/components/footer.html').then(r => r.text()).catch(() => '')
-    ]).then(([header, footer]) => {
-      setHeaderHtml(header);
-      setFooterHtml(footer);
-    });
-
-    if (!document.querySelector('link[href="/src/components/styles.css"]')) {
-      const l = document.createElement('link');
-      l.rel = 'stylesheet';
-      l.href = '/src/components/styles.css';
-      document.head.appendChild(l);
-    }
-  }, []);
-
-  // =========================================================
-  // 2. EL CEREBRO BLINDADO: Pone tu nombre de forma segura
-  // =========================================================
-  useEffect(() => {
-    if (!headerHtml) return;
-
-    const timer = setTimeout(async () => {
+    const checkLogin = async () => {
       try {
         const res = await fetch('http://localhost:3001/auth/me', { credentials: 'include' });
         const data = res.ok ? await res.json() : null;
-
-        const profileNameEl = document.getElementById('mu-profile-name');
-        const profileLinkEl = document.getElementById('header-link-perfil') || document.getElementById('mu-profile-link') || (document.querySelector('#mu-profile-area a'));
-        const logoutBtn = document.getElementById('mu-logout-button');
-
-        const setProfileUI = (loggedIn, name) => {
-          if (profileNameEl) {
-            profileNameEl.textContent = loggedIn ? name : 'Ingresar';
-            profileNameEl.style.color = loggedIn ? '#000' : '#444';
-          }
-          if (profileLinkEl) {
-            profileLinkEl.onclick = (e) => {
-              e.preventDefault();
-              navigate(loggedIn ? '/perfil' : '/login');
-            };
-            profileLinkEl.setAttribute('href', loggedIn ? '/perfil' : '/login');
-          }
-          if (logoutBtn) {
-            logoutBtn.style.display = loggedIn ? 'block' : 'none';
-          }
-        };
-
         if (data && data.loggedIn && data.user) {
-          const nombre = (data.user.nombre || data.user.email || 'Usuario').split(' ')[0];
           setIsUserLoggedIn(true);
-          setProfileUI(true, nombre);
         } else {
           setIsUserLoggedIn(false);
-          setProfileUI(false, 'Ingresar');
         }
       } catch (err) {
         setIsUserLoggedIn(false);
       }
-    }, 50);
-
-    return () => clearTimeout(timer);
-  }, [headerHtml, navigate]);
-
-  // =========================================================
-  // 3. ACTUALIZAR NUMERITO DEL CARRITO
-  // =========================================================
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const badge = document.getElementById('mu-cart-badge');
-      if (badge) {
-        badge.textContent = totalItems;
-        badge.setAttribute('data-count', totalItems);
-      }
-    }, 50);
-    return () => clearTimeout(timer);
-  }, [totalItems, headerHtml]);
+    };
+    checkLogin();
+  }, []);
 
   // TRAER LA INFO DEL PRODUCTO DESDE STRAPI
   useEffect(() => {
@@ -275,7 +210,6 @@ const ProductPage = () => {
 
   return (
     <div className="page-wrapper">
-      <div id="header-root" dangerouslySetInnerHTML={{ __html: headerHtml }} />
 
       <main className="main-content">
         <div className="breadcrumb">
@@ -473,8 +407,6 @@ const ProductPage = () => {
           </div>
         </section>
       </main>
-
-      <div id="footer-root" dangerouslySetInnerHTML={{ __html: footerHtml }} />
     </div>
   );
 };

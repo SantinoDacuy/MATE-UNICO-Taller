@@ -9,74 +9,7 @@ const Carrito = () => {
   const navigate = useNavigate();
   const { cart, removeFromCart, addToCart, totalItems, totalPrice } = useContext(CartContext);
 
-  const [headerHtml, setHeaderHtml] = useState('');
-  const [footerHtml, setFooterHtml] = useState('');
   const [toast, setToast] = useState(null);
-
-  // =========================================================
-  // 1. CARGAMOS EL DISEÑO (Header y Footer)
-  // =========================================================
-  useEffect(() => {
-    Promise.all([
-      fetch('/src/components/header.html').then(r => r.text()).catch(() => ''),
-      fetch('/src/components/footer.html').then(r => r.text()).catch(() => '')
-    ]).then(([header, footer]) => {
-      setHeaderHtml(header);
-      setFooterHtml(footer);
-    });
-
-    if (!document.querySelector('link[href="/src/components/styles.css"]')) {
-      const l = document.createElement('link');
-      l.rel = 'stylesheet';
-      l.href = '/src/components/styles.css';
-      document.head.appendChild(l);
-    }
-  }, []);
-
-  // =========================================================
-  // 2. EL CEREBRO BLINDADO: Pone tu nombre de forma segura
-  // =========================================================
-  useEffect(() => {
-    if (!headerHtml) return;
-
-    const timer = setTimeout(async () => {
-      try {
-        const res = await fetch('http://localhost:3001/api/user/me', { credentials: 'include' });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.loggedIn && data.user) {
-            const profileNameEl = document.getElementById('mu-profile-name');
-            if (profileNameEl) {
-              profileNameEl.textContent = (data.user.nombre || 'Usuario').split(' ')[0];
-            }
-            const btnPerfil = document.getElementById('header-link-perfil');
-            if (btnPerfil) {
-              btnPerfil.onclick = (e) => {
-                e.preventDefault();
-                navigate('/perfil');
-              };
-            }
-          }
-        }
-      } catch (err) {}
-    }, 50);
-
-    return () => clearTimeout(timer);
-  }, [headerHtml, navigate]);
-
-  // =========================================================
-  // 3. ACTUALIZAR NUMERITO DEL CARRITO
-  // =========================================================
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const badge = document.getElementById('mu-cart-badge');
-      if (badge) {
-        badge.textContent = totalItems;
-        badge.setAttribute('data-count', totalItems);
-      }
-    }, 50);
-    return () => clearTimeout(timer);
-  }, [totalItems, headerHtml]);
 
   // Mensaje flotante
   useEffect(() => {
@@ -105,7 +38,6 @@ const Carrito = () => {
 
   return (
     <div className="carrito-page">
-      <div id="header-root" dangerouslySetInnerHTML={{ __html: headerHtml }} />
 
       <div className="page-path">Home &gt; Carrito</div>
 
@@ -173,7 +105,6 @@ const Carrito = () => {
         )}
       </main>
 
-      <div id="footer-root" dangerouslySetInnerHTML={{ __html: footerHtml }} />
       {toast && <div className="cart-toast" role="status">{toast}</div>}
     </div>
   );

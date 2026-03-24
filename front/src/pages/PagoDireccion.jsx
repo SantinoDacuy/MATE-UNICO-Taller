@@ -27,24 +27,14 @@ export default function PagoDireccion() {
   const [coupon, setCoupon] = useState('');
   const [appliedCuponId, setAppliedCuponId] = useState(null); // Guardamos el ID del cupón de la DB
   const [toast, setToast] = useState(null);
-  const [headerHtml, setHeaderHtml] = useState('');
-  const [footerHtml, setFooterHtml] = useState('');
-
   const envio = 4000;
   const grabado = cart.reduce((acc, item) => (item.grabado && item.grabado !== 'Sin grabado' ? acc + 3000 : acc), 0);
   const total = (totalPrice + envio + grabado) - descuento;
 
   useEffect(() => {
-    Promise.all([
-      fetch('/src/components/header.html').then(r => r.text()).catch(() => ''),
-      fetch('/src/components/footer.html').then(r => r.text()).catch(() => ''),
       fetch('https://apis.datos.gob.ar/georef/api/provincias?campos=id,nombre')
         .then(res => res.json())
         .then(data => setProvincias(data.provincias.sort((a, b) => a.nombre.localeCompare(b.nombre))))
-    ]).then(([header, footer]) => {
-      setHeaderHtml(header);
-      setFooterHtml(footer);
-    });
   }, []);
 
   useEffect(() => {
@@ -56,7 +46,6 @@ export default function PagoDireccion() {
   }, [provinciaSeleccionada]);
 
   useEffect(() => {
-    if (!headerHtml) return;
     const syncUser = async () => {
       try {
         const res = await fetch('http://localhost:3001/api/user/me', { credentials: 'include' });
@@ -68,14 +57,12 @@ export default function PagoDireccion() {
             setApellido(data.user.apellido || '');
             setDireccion(data.user.calle || '');
             setProvinciaSeleccionada(data.user.provincia || '');
-            const profileNameEl = document.getElementById('mu-profile-name');
-            if (profileNameEl) profileNameEl.textContent = (data.user.nombre || 'Usuario').split(' ')[0];
           } else { navigate('/login'); }
         } else { navigate('/login'); }
       } catch (error) { navigate('/login'); }
     };
     syncUser();
-  }, [headerHtml, navigate]);
+  }, [navigate]);
 
   // --- LÓGICA DE CUPONES DINÁMICA CON LA DB ---
   const applyCoupon = async () => {
@@ -138,11 +125,10 @@ export default function PagoDireccion() {
     return () => clearTimeout(id);
   }, [toast]);
 
-  if (!autorizado || !headerHtml) return null;
+  if (!autorizado) return null;
 
   return (
     <div className="checkout-page">
-      <div id="header-root" dangerouslySetInnerHTML={{ __html: headerHtml }} />
       <div className="page-path" style={{paddingLeft: '50px', paddingTop: '20px'}}>Home &gt; Checkout</div>
 
       <main className="checkout-contenedor-principal">
@@ -165,8 +151,12 @@ export default function PagoDireccion() {
           </div>
 
           <div className="cupon-descuento">
-            <input value={coupon} onChange={e => setCoupon(e.target.value)} type="text" placeholder="Cupón de descuento" />
-            <button type="button" className="btn-agregar-cupon" onClick={applyCoupon}>Agregar</button>
+            <input value={coupon} onChange={e => setCoupon(e.target.value)} type="text" placeholder="Cupón de descuento" disabled={appliedCuponId !== null} />
+            {appliedCuponId ? (
+              <button type="button" className="btn-agregar-cupon" style={{background: '#d32f2f', color: '#fff'}} onClick={() => { setDescuento(0); setAppliedCuponId(null); setCoupon(''); setToast('Cupón removido'); }}>Quitar ✕</button>
+            ) : (
+              <button type="button" className="btn-agregar-cupon" onClick={applyCoupon}>Agregar</button>
+            )}
           </div>
 
           <div className="resumen-orden card-resumen">
@@ -208,7 +198,6 @@ export default function PagoDireccion() {
           </form>
         </section>
       </main>
-      <div id="footer-root" dangerouslySetInnerHTML={{ __html: footerHtml }} />
       {toast && <div className="checkout-toast">{toast}</div>}
     </div>
   );

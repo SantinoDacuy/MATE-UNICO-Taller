@@ -5,74 +5,10 @@ import './Pago-tarjeta.css';
 import mercadoPagoImg from '../assets/mercadoPago.png';
 
 const PagoTarjeta = () => {
-  const [headerHtml, setHeaderHtml] = useState('');
-  const [footerHtml, setFooterHtml] = useState('');
   const navigate = useNavigate();
   
   // Traemos el carrito y la función para vaciarlo del contexto
   const { cart, totalItems, clearCart } = useContext(CartContext);
-
-  // =========================================================
-  // 1. CARGAMOS EL DISEÑO (Header y Footer)
-  // =========================================================
-  useEffect(() => {
-    Promise.all([
-      fetch('/src/components/header.html').then(r => r.text()).catch(() => ''),
-      fetch('/src/components/footer.html').then(r => r.text()).catch(() => '')
-    ]).then(([header, footer]) => {
-      setHeaderHtml(header);
-      setFooterHtml(footer);
-    });
-
-    if (!document.querySelector('link[href="/src/components/styles.css"]')) {
-      const l = document.createElement('link');
-      l.rel = 'stylesheet';
-      l.href = '/src/components/styles.css';
-      document.head.appendChild(l);
-    }
-  }, []);
-
-  // =========================================================
-  // 2. ACTUALIZAR NOMBRE EN HEADER
-  // =========================================================
-  useEffect(() => {
-    if (!headerHtml) return;
-
-    const timer = setTimeout(async () => {
-      try {
-        const res = await fetch('http://localhost:3001/api/user/me', { credentials: 'include' });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.loggedIn && data.user) {
-            const profileNameEl = document.getElementById('mu-profile-name');
-            if (profileNameEl) {
-              profileNameEl.textContent = (data.user.nombre || 'Usuario').split(' ')[0];
-            }
-            const btnPerfil = document.getElementById('header-link-perfil');
-            if (btnPerfil) {
-              btnPerfil.onclick = (e) => {
-                e.preventDefault();
-                navigate('/perfil');
-              };
-            }
-          }
-        }
-      } catch (err) {}
-    }, 50);
-
-    return () => clearTimeout(timer);
-  }, [headerHtml, navigate]);
-
-  // =========================================================
-  // 3. ACTUALIZAR NUMERITO DEL CARRITO
-  // =========================================================
-  useEffect(() => {
-    const badge = document.getElementById('mu-cart-badge');
-    if (badge) {
-      badge.textContent = totalItems;
-      badge.setAttribute('data-count', totalItems);
-    }
-  }, [totalItems, headerHtml]);
 
   // =========================================================
   // 4. FUNCIÓN PARA PROCESAR LA VENTA REAL EN DB
@@ -82,7 +18,9 @@ const PagoTarjeta = () => {
 
     // Limpiamos el carrito para que solo lleve lo necesario y no objetos pesados de Strapi
     const cartLimpio = cart.map(item => ({
-      id: item.id || item.documentId,
+      id: item.id,
+      documentId: item.documentId,
+      nombre: item.nombre,
       precio: Number(item.precio),
       cantidad: Number(item.cantidad)
     }));
@@ -116,7 +54,6 @@ const PagoTarjeta = () => {
 
   return (
     <div className="pago-tarjeta-page">
-      <div id="header-root" dangerouslySetInnerHTML={{ __html: headerHtml }} />
       
       <div className="checkout-container">
         <nav className="breadcrumb">Home &gt; Carrito</nav>
@@ -153,7 +90,6 @@ const PagoTarjeta = () => {
         <div className="leaf-decoration right"></div>
       </div>
       
-      <div id="footer-root" dangerouslySetInnerHTML={{ __html: footerHtml }} />
     </div>
   );
 };

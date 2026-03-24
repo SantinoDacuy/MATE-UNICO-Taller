@@ -96,6 +96,8 @@ const HomePage = () => {
     };
 
     initGoogle();
+    // Timeout para dejar de cargar si Google no se inicializa
+    setTimeout(() => setIsLoading(false), 10000);
   }, [navigate]);
 
   return (
@@ -191,6 +193,10 @@ const HomePage = () => {
           <p className="login-welcome-text-pro">
             Bienvenido a Mate Único, donde la tradición se viste de elegancia.
           </p>
+
+          <div style={{ marginTop: '18px', textAlign: 'center' }}>
+            
+          </div>
         </div>
       </div>
     </div>
