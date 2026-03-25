@@ -446,15 +446,83 @@ app.post('/api/checkout/procesar', async (req, res) => {
     const { cart, checkoutData } = req.body;
     const userId = req.session.userId;
 
+    let client;
     try {
-        await db.query('BEGIN');
+        client = await db.getClient();
+
+        // 1. Resolver todos los IDs ANTES de iniciar la transacción
+        // *En PostgreSQL, si una consulta dentro de BEGIN falla y la atrapamos, toda la transacción queda abortada.*
+        // *Por eso hacemos la lectura previa de IDs por fuera.*
+        const resolvedCart = [];
+        for (const item of cart) {
+            let prodId = null;
+            let comboId = null;
+
+            // Estrategia 1: Buscar por documentId en tabla de mapeo
+            if (item.documentId) {
+                try {
+                    const { rows: mapped } = await client.query(
+                        `SELECT producto_id, combo_id FROM strapi_producto_map WHERE strapi_document_id = $1`,
+                        [item.documentId]
+                    );
+                    if (mapped.length > 0) {
+                        prodId = mapped[0].producto_id;
+                        comboId = mapped[0].combo_id;
+                    }
+                } catch (mapError) {
+                    console.log(`⚠️ Tabla de mapeo no lista aún, usando estrategia alternativa...`);
+                }
+            }
+
+            // Estrategia 2: Buscar por nombre/descripcion
+            if (!prodId && !comboId && item.nombre) {
+                const { rows: found } = await client.query(
+                    `SELECT id FROM producto WHERE LOWER(descripcion) = LOWER($1) LIMIT 1`,
+                    [item.nombre]
+                );
+                if (found.length > 0) {
+                    prodId = found[0].id;
+                } else {
+                    const { rows: foundCombo } = await client.query(
+                        `SELECT id FROM combo WHERE LOWER(descripcion) = LOWER($1) LIMIT 1`,
+                        [item.nombre]
+                    );
+                    if (foundCombo.length > 0) {
+                        comboId = foundCombo[0].id;
+                    }
+                }
+            }
+
+            // Estrategia 3: Fallback por ID directo
+            if (!prodId && !comboId) {
+                const tryId = parseInt(item.id, 10);
+                if (!isNaN(tryId)) {
+                    const { rows: check } = await client.query('SELECT id FROM producto WHERE id = $1', [tryId]);
+                    if (check.length > 0) prodId = check[0].id;
+                }
+            }
+
+            if (!prodId && !comboId) {
+                console.warn(`⚠️ No se encontró producto en PG para: "${item.nombre}" (documentId: ${item.documentId}, id: ${item.id})`);
+                throw new Error(`Producto "${item.nombre}" no encontrado en la base de datos`);
+            }
+
+            resolvedCart.push({
+                ...item,
+                prodId,
+                comboId
+            });
+        }
+
+        // 2. Iniciar transacción y guardar la compra
+        await client.query('BEGIN');
 
         const subtotalVenta = cart.reduce((acc, item) => acc + (Number(item.precio) * Number(item.cantidad)), 0);
         const totalFinal = checkoutData.totalFinal || (subtotalVenta + 4000);
 
         console.log(`Iniciando compra para usuario ID: ${userId}`);
 
-        const ventaRes = await db.query(
+        const ventaRes = await client.query(
             `INSERT INTO venta (id_usuario, fecha_venta, subtotal, descuento, total, estado, metodo_pago, id_cupon)
              VALUES ($1, CURRENT_DATE, $2, $3, $4, 'Pendiente', 'Mercado Pago', $5)
              RETURNING id`,
@@ -464,31 +532,30 @@ app.post('/api/checkout/procesar', async (req, res) => {
         const ventaId = ventaRes.rows[0].id;
         
         if (checkoutData.id_cupon) {
-            await db.query('UPDATE Cupon SET usado = true WHERE id = $1', [checkoutData.id_cupon]);
+            await client.query('UPDATE Cupon SET usado = true WHERE id = $1', [checkoutData.id_cupon]);
         }
 
-        // 2. Insertar en detalle_venta
-        for (const item of cart) {
-            let prodId = parseInt(item.id, 10);
-            if (isNaN(prodId)) prodId = null; //Fallback if still string
-            
+        // 3. Insertar en detalle_venta
+        for (const item of resolvedCart) {
             const subtotalItem = Number(item.precio) * Number(item.cantidad);
 
-            await db.query(
-                `INSERT INTO detalle_venta (id_venta, id_producto, cantidad, precio_unitario, subtotal, total)
-                 VALUES ($1, $2, $3, $4, $5, $6)`,
-                [ventaId, prodId, item.cantidad, item.precio, subtotalItem, subtotalItem]
+            await client.query(
+                `INSERT INTO detalle_venta (id_venta, id_producto, id_combo, cantidad, precio_unitario, subtotal, total)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                [ventaId, item.prodId || null, item.comboId || null, item.cantidad, item.precio, subtotalItem, subtotalItem]
             );
         }
 
-        await db.query('COMMIT');
-        console.log("✅ Venta guardada correctamente en tablas minúsculas. ID:", ventaId);
+        await client.query('COMMIT');
+        console.log("✅ Venta guardada correctamente. ID:", ventaId);
         res.json({ success: true, ventaId });
 
     } catch (err) {
-        await db.query('ROLLBACK');
+        if (client) await client.query('ROLLBACK');
         console.error('❌ ERROR SQL REAL:', err.message);
         res.status(500).json({ error: err.message });
+    } finally {
+        if (client) client.release();
     }
 });
 
@@ -508,6 +575,104 @@ app.get('/api/cupones/:code', async (req, res) => {
     } catch (error) {
         console.error('Coupon DB Error:', error);
         res.status(500).json({ success: false, message: 'Error de servidor verificando cupón' });
+    }
+});
+
+/*
+=================================================
+RUTA: SYNC INICIAL DE PRODUCTOS STRAPI → POSTGRESQL
+=================================================
+*/
+app.post('/api/sync-products', async (req, res) => {
+    try {
+        // 1. Crear tabla de mapeo si no existe (con combo_id)
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS strapi_producto_map (
+                strapi_document_id VARCHAR(255) PRIMARY KEY,
+                producto_id INT REFERENCES Producto(id),
+                combo_id INT REFERENCES Combo(id)
+            )
+        `);
+
+        // Si existe, asegurarse de que tenga combo_id (compatibilidad)
+        try {
+            await db.query(`ALTER TABLE strapi_producto_map ADD COLUMN combo_id INT REFERENCES Combo(id)`);
+        } catch (e) { /* Ya existe */ }
+
+        // 2. Traer todos los productos de Strapi
+        const strapiRes = await fetch('http://localhost:1337/api/productos?populate=*&pagination[limit]=100');
+        const strapiData = await strapiRes.json();
+        const strapiProducts = strapiData.data || [];
+
+        let synced = 0;
+        let skipped = 0;
+
+        for (const prod of strapiProducts) {
+            const documentId = prod.documentId || String(prod.id);
+            const isCombo = prod.categoria === 'combo_simple' || prod.categoria === 'combo_completo';
+            const nombre = prod.nombre || 'Sin nombre';
+
+            // Ver si ya está mapeado
+            const { rows: existing } = await db.query(
+                'SELECT producto_id, combo_id FROM strapi_producto_map WHERE strapi_document_id = $1',
+                [documentId]
+            );
+            if (existing.length > 0) {
+                skipped++;
+                continue;
+            }
+
+            let pgId = null;
+            let tableToUse = null;
+
+            if (isCombo) {
+                const tipo_combo = prod.categoria === 'combo_simple' ? 'mate + bombilla' : 'mate + bombilla + bolso';
+                const { rows: match } = await db.query('SELECT id FROM combo WHERE LOWER(descripcion) = LOWER($1) LIMIT 1', [nombre]);
+                if (match.length > 0) {
+                    pgId = match[0].id;
+                } else {
+                    const insertRes = await db.query(
+                        `INSERT INTO combo (descripcion, tipo_combo, fecha_creacion, grabado, cantidad_disp, umbral_min, precio)
+                         VALUES ($1, $2, CURRENT_DATE, $3, 10, 5, $4) RETURNING id`,
+                        [nombre, tipo_combo, prod.grabado || false, Number(prod.precio) || 0]
+                    );
+                    pgId = insertRes.rows[0].id;
+                }
+                tableToUse = 'combo';
+            } else {
+                let color = 'Negro';
+                if (prod.color_negro) color = 'Negro';
+                else if (prod.color_marron) color = 'Marron';
+                else if (prod.color_blanco) color = 'Blanco';
+                else if (prod.color_gris) color = 'Gris';
+
+                const { rows: match } = await db.query('SELECT id FROM producto WHERE LOWER(descripcion) = LOWER($1) LIMIT 1', [nombre]);
+                if (match.length > 0) {
+                    pgId = match[0].id;
+                } else {
+                    const insertRes = await db.query(
+                        `INSERT INTO producto (material, color, dimensiones, capacidad, precio, descripcion, grabado, cantidad_disp)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+                        [prod.material || 'calabaza', color, 10.0, 200, Number(prod.precio) || 0, nombre, prod.grabado || false, 10]
+                    );
+                    pgId = insertRes.rows[0].id;
+                }
+                tableToUse = 'producto';
+            }
+
+            // Crear mapeo
+            await db.query(
+                'INSERT INTO strapi_producto_map (strapi_document_id, producto_id, combo_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+                [documentId, tableToUse === 'producto' ? pgId : null, tableToUse === 'combo' ? pgId : null]
+            );
+            synced++;
+            console.log(`✅ Sync: "${nombre}" (Strapi ${documentId}) → PG ${tableToUse}.id=${pgId}`);
+        }
+
+        res.json({ success: true, synced, skipped, total: strapiProducts.length });
+    } catch (err) {
+        console.error('❌ Error en sync:', err.message);
+        res.status(500).json({ success: false, error: err.message });
     }
 });
 
