@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom'; 
+import { Heart } from 'lucide-react';
 import { CartContext } from '../context/CartContext'; 
 import './ProductPage.css';
 
@@ -65,23 +66,7 @@ const ProductPage = () => {
   const precioUnitario = (producto?.grabado && grabadoConfirmado) ? precioBase + PRECIO_GRABADO : precioBase;
   const precioTotal = precioUnitario * quantity;
 
-  // Efecto para verificar si el usuario está logeado para ciertas acciones
-  useEffect(() => {
-    const checkLogin = async () => {
-      try {
-        const res = await fetch('http://localhost:3001/auth/me', { credentials: 'include' });
-        const data = res.ok ? await res.json() : null;
-        if (data && data.loggedIn && data.user) {
-          setIsUserLoggedIn(true);
-        } else {
-          setIsUserLoggedIn(false);
-        }
-      } catch (err) {
-        setIsUserLoggedIn(false);
-      }
-    };
-    checkLogin();
-  }, []);
+  // Efecto para verificar si el usuario está logeado se consolida más abajo
 
   // TRAER LA INFO DEL PRODUCTO DESDE STRAPI
   useEffect(() => {
@@ -113,12 +98,42 @@ const ProductPage = () => {
       });
   }, [id]);
 
-  // Mantener estado favorito sincronizado en historial local
+  // Mantener estado favorito sincronizado verificando backend primero y luego fallback local
   useEffect(() => {
     if (!producto) return;
     const currentProductKey = normalizeProductKey(producto);
-    const favoritos = loadFavorites();
-    setIsFavorite(favoritos.some((p) => String(p.documentId) === currentProductKey));
+    
+    const fetchUserAndFavorites = async () => {
+      let isFav = false;
+      try {
+        const res = await fetch('http://localhost:3001/api/user/me', { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.loggedIn && data.user) {
+            setIsUserLoggedIn(true);
+            const favsApi = data.user.favoritos || [];
+            if (favsApi.length > 0) {
+              saveFavorites(favsApi); // Refresca caché local
+            }
+            isFav = favsApi.some((p) => String(p.id) === currentProductKey || String(p.documentId) === currentProductKey);
+          } else {
+            setIsUserLoggedIn(false);
+          }
+        }
+      } catch (err) {
+        console.warn('Error al verificar sesión/favoritos:', err);
+      }
+
+      if (!isFav) {
+        // Fallback a localStorage si falló API o no está en API
+        const favoritos = loadFavorites();
+        isFav = favoritos.some((p) => String(p.documentId) === currentProductKey || String(p.id) === currentProductKey);
+      }
+      
+      setIsFavorite(isFav);
+    };
+
+    fetchUserAndFavorites();
   }, [producto]);
 
   // Productos similares random (se recarga cuando cambia el producto)
@@ -239,12 +254,12 @@ const ProductPage = () => {
             <div className="product-title-row">
               <h1>{producto.nombre}</h1>
               <button
-                className={`wishlist-btn ${isFavorite ? 'favorite' : ''}`}
+                className="wishlist-btn"
                 onClick={handleToggleFavorite}
                 aria-label={isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
                 title={isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
               >
-                <span className="heart-icon" aria-hidden="true" />
+                <Heart size={28} fill={isFavorite ? "#ff0000" : "none"} color={isFavorite ? "#ff0000" : "#333"} strokeWidth={2} />
               </button>
             </div>
 

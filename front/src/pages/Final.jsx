@@ -8,10 +8,30 @@ const CheckoutSuccess = () => {
   const { clearCart, totalItems } = useContext(CartContext);
 
   // =========================================================
-  // 1. VACIAR EL CARRITO EN MONTAJE
+  // 1. VACIAR EL CARRITO Y CONFIRMAR PAGO EN MONTAJE
   // =========================================================
   useEffect(() => {
     clearCart();
+
+    // Confirmar el pago si venimos de Mercado Pago
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentId = urlParams.get('payment_id');
+    const status = urlParams.get('status');
+    const externalRef = urlParams.get('external_reference');
+
+    if (paymentId && status === 'approved' && externalRef) {
+      fetch('http://localhost:3001/api/checkout/confirm', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          payment_id: paymentId,
+          status: status,
+          external_reference: externalRef
+        })
+      }).catch(err => console.error("Error al confirmar pago:", err));
+    }
   }, [clearCart]);
 
   return (

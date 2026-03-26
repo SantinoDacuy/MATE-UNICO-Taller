@@ -26,7 +26,7 @@ const PagoTarjeta = () => {
     }));
 
     try {
-      const res = await fetch('http://localhost:3001/api/checkout/procesar', {
+      const res = await fetch('http://localhost:3001/api/create_preference', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -39,9 +39,8 @@ const PagoTarjeta = () => {
       const data = await res.json();
 
       if (res.ok && data.success) {
-        if (clearCart) clearCart(); 
-        sessionStorage.removeItem('checkout_data');
-        navigate('/final');
+        // Redirigir a Mercado Pago
+        window.location.href = data.init_point;
       } else {
         // Ahora el alert te va a decir EXACTAMENTE qué falló en Postgres
         alert("Error: " + (data.error || "No se pudo registrar la compra"));

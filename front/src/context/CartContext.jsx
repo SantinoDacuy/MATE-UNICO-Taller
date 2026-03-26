@@ -25,8 +25,9 @@ export const CartProvider = ({ children }) => {
 
   const addToCart = (producto, cantidad, color, grabado) => {
     setCart((prevCart) => {
+      const grabadoReal = grabado || 'Sin grabado';
       const itemIndex = prevCart.findIndex(
-        (item) => item.id === producto.id && item.color === color && item.grabado === grabado
+        (item) => item.id === producto.id && item.color === color && item.grabado === grabadoReal
       );
 
       if (itemIndex !== -1) {

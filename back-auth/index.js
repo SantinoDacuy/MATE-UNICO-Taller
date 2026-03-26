@@ -4,9 +4,13 @@ const cors = require('cors');
 const session = require('express-session');
 const { OAuth2Client } = require('google-auth-library');
 const db = require('./db'); // Importamos nuestra conexión a la BD
+const { MercadoPagoConfig, Preference, Payment } = require('mercadopago');
 
 const app = express();
 const PORT = 3001; // Puerto para el back-end
+
+// Configuración de Mercado Pago
+const clientMP = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -440,7 +444,7 @@ app.post('/auth/logout', (req, res) => {
     });
 });
 
-app.post('/api/checkout/procesar', async (req, res) => {
+app.post('/api/create_preference', async (req, res) => {
     if (!req.session || !req.session.userId) return res.status(401).json({ error: 'No logueado' });
 
     const { cart, checkoutData } = req.body;
@@ -547,8 +551,28 @@ app.post('/api/checkout/procesar', async (req, res) => {
         }
 
         await client.query('COMMIT');
-        console.log("✅ Venta guardada correctamente. ID:", ventaId);
-        res.json({ success: true, ventaId });
+        console.log("✅ Venta guardada temporalmente (Pendiente MP). ID:", ventaId);
+
+        // 4. Crear Preferencia en Mercado Pago
+        const originUrl = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
+        const preferenceClient = new Preference(clientMP);
+        const preferenceResponse = await preferenceClient.create({
+            body: {
+                items: cart.map(item => ({
+                    title: item.nombre,
+                    unit_price: Number(item.precio),
+                    quantity: Number(item.cantidad)
+                })),
+                external_reference: String(ventaId),
+                back_urls: {
+                    success: `${originUrl}/final`,
+                    failure: `${originUrl}/pago-tarjeta`,
+                    pending: `${originUrl}/pago-tarjeta`
+                }
+            }
+        });
+
+        res.json({ success: true, init_point: preferenceResponse.init_point, ventaId });
 
     } catch (err) {
         if (client) await client.query('ROLLBACK');
@@ -674,6 +698,58 @@ app.post('/api/sync-products', async (req, res) => {
         console.error('❌ Error en sync:', err.message);
         res.status(500).json({ success: false, error: err.message });
     }
+});
+
+// Confirmación de Pago desde el Frontend (Reemplaza Webhook local)
+app.post('/api/checkout/confirm', async (req, res) => {
+    const { payment_id, status, external_reference } = req.body;
+    
+    if (status === 'approved' && external_reference) {
+        try {
+            // Verificamos el estado real en Mercado Pago usando el payment_id
+            const paymentClient = new Payment(clientMP);
+            const paymentInfo = await paymentClient.get({ id: payment_id });
+            
+            if (paymentInfo.status === 'approved') {
+                await db.query("UPDATE venta SET estado = 'Aprobado' WHERE id = $1", [external_reference]);
+                console.log(`✅ Pago verificado y aprobado en DB. Venta ID: ${external_reference}`);
+                return res.json({ success: true });
+            }
+        } catch (error) {
+            console.error('❌ Error verificando pago en MP:', error.message);
+            return res.status(500).json({ success: false, error: 'Error verificando pago' });
+        }
+    }
+    
+    // Si no es aprobado o faltan datos
+    res.json({ success: false });
+});
+
+// Webhook de Mercado Pago (para producción)
+app.post('/api/webhook_mp', async (req, res) => {
+    const paymentId = req.query['data.id'] || (req.body && req.body.data && req.body.data.id);
+    const type = req.query.type || (req.body && req.body.type);
+    
+    if (type === 'payment' && paymentId) {
+        try {
+            const paymentClient = new Payment(clientMP);
+            const paymentInfo = await paymentClient.get({ id: paymentId });
+            
+            if (paymentInfo.status === 'approved') {
+                const ventaId = paymentInfo.external_reference;
+                if (ventaId) {
+                    await db.query("UPDATE venta SET estado = 'Aprobado' WHERE id = $1", [ventaId]);
+                    console.log(`✅ Pago aprobado en MP para la venta ID: ${ventaId}`);
+                }
+            }
+        } catch (error) {
+            console.error('❌ Error al procesar webhook de MP:', error);
+            return res.status(500).send('Error');
+        }
+    }
+    
+    // MP espera un HTTP 200 rápido
+    res.status(200).send('OK');
 });
 
 // Ponemos el servidor a escuchar

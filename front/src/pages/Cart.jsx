@@ -27,8 +27,7 @@ const Carrito = () => {
 
   const handleCambioCantidad = (producto, delta) => {
     if (producto.cantidad === 1 && delta === -1) return;
-    const mockProductParaContexto = { documentId: producto.id }; 
-    addToCart(mockProductParaContexto, delta, producto.color, producto.grabado);
+    addToCart(producto, delta, producto.color, producto.grabado);
     showToast('Cantidad actualizada');
   };
 
