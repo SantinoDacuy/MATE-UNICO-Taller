@@ -26,7 +26,8 @@ const PagoEnvio = () => {
   const metodoActual = SHIPPING_METHODS.find(m => m.id === metodoSeleccionado);
   const costoEnvio = metodoActual ? metodoActual.cost : 0;
   
-  const total = totalPrice + costoEnvio - descuento;
+  const grabado = cart.reduce((acc, item) => (item.grabado && item.grabado !== 'Sin grabado' ? acc + 3000 : acc), 0);
+  const total = totalPrice + costoEnvio + grabado - descuento;
 
   useEffect(() => {
     localStorage.setItem('shippingMethod', metodoSeleccionado);
@@ -42,6 +43,16 @@ const PagoEnvio = () => {
       return;
     }
     setError('');
+
+    // GUARDAR EN SESSION STORAGE PARA QUE EL BACKEND SEPA EL TOTAL REAL
+    const existingData = JSON.parse(sessionStorage.getItem('checkout_data') || '{}');
+    sessionStorage.setItem('checkout_data', JSON.stringify({
+      ...existingData,
+      metodoEnvio: metodoActual.name,
+      costoEnvio: costoEnvio,
+      totalFinal: total
+    }));
+
     navigate('/pago-tarjeta'); 
   };
 

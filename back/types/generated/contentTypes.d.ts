@@ -467,6 +467,50 @@ export interface AdminUser extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiPedidoPedido extends Struct.CollectionTypeSchema {
+  collectionName: 'pedidos';
+  info: {
+    displayName: 'Pedido';
+    pluralName: 'pedidos';
+    singularName: 'pedido';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    cliente_email: Schema.Attribute.Email;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    detalle_producto: Schema.Attribute.Text;
+    estado_envio: Schema.Attribute.Enumeration<
+      [
+        'Pendiente de env\u00EDo',
+        'Preparando',
+        'Despachado',
+        'En camino',
+        'Entregado',
+      ]
+    >;
+    estado_venta: Schema.Attribute.Enumeration<
+      ['Pendiente', 'Aprobado', 'Rechazado', 'Cancelado']
+    >;
+    id_venta: Schema.Attribute.Integer;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::pedido.pedido'
+    > &
+      Schema.Attribute.Private;
+    metodo_envio: Schema.Attribute.String;
+    publishedAt: Schema.Attribute.DateTime;
+    total: Schema.Attribute.BigInteger;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiProductoProducto extends Struct.CollectionTypeSchema {
   collectionName: 'productos';
   info: {
@@ -1025,6 +1069,7 @@ declare module '@strapi/strapi' {
       'admin::transfer-token': AdminTransferToken;
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
+      'api::pedido.pedido': ApiPedidoPedido;
       'api::producto.producto': ApiProductoProducto;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;

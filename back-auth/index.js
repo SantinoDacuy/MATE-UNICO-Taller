@@ -251,9 +251,12 @@ app.get('/api/user/me/ventas', async (req, res) => {
     if (req.session && req.session.ventas) return res.json({ success: true, ventas: req.session.ventas });
     if (!req.session || !req.session.userId) return res.status(401).json({ success: false });
     try {
-        // Get ventas with basic info - use simple query to avoid parameter issues
+        // Get ventas with basic info - NO mostrar compras 'Pendiente' o 'Cancelado'
         const userId = req.session.userId;
-        const ventasQuery = `SELECT id, fecha_venta, subtotal, descuento, total, estado, metodo_pago FROM venta WHERE id_usuario = ${userId} ORDER BY fecha_venta DESC`;
+        const ventasQuery = `SELECT id, fecha_venta, subtotal, descuento, total, estado, estado_envio, metodo_pago 
+                             FROM venta 
+                             WHERE id_usuario = ${userId} AND estado NOT IN ('Pendiente', 'Cancelado', 'Rechazado')
+                             ORDER BY fecha_venta DESC`;
         const { rows: ventas } = await db.query(ventasQuery);
 
         // For each venta, get its details if they exist
@@ -553,22 +556,59 @@ app.post('/api/create_preference', async (req, res) => {
         await client.query('COMMIT');
         console.log("✅ Venta guardada temporalmente (Pendiente MP). ID:", ventaId);
 
+        // --- SINCRONIZAR A STRAPI ---
+        try {
+            const detalleCheckout = resolvedCart.map(c => `${c.cantidad}x ${c.nombre}`).join(' | ');
+            const resStrapi = await fetch('http://127.0.0.1:1337/api/pedidos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    data: {
+                        id_venta_pg: ventaId,
+                        cliente_email: req.session.user ? req.session.user.email : 'anonimo',
+                        total: totalFinal,
+                        estado_venta: 'Pendiente',
+                        estado_envio: 'Pendiente de envío',
+                        metodo_envio: checkoutData.metodoEnvio || 'N/A',
+                        detalle_productos: detalleCheckout,
+                        publishedAt: new Date().toISOString()
+                    }
+                })
+            });
+            
+            if (!resStrapi.ok) {
+                const errText = await resStrapi.text();
+                console.error("⚠️ Strapi rechazó la creación del pedido. Status:", resStrapi.status, "Detalle:", errText);
+            } else {
+                console.log("✅ Venta replicada en Strapi exitosamente");
+            }
+        } catch (syncErr) {
+            console.error("⚠️ Error de red mandando a Strapi:", syncErr.message);
+        }
+
         // 4. Crear Preferencia en Mercado Pago
         const originUrl = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
+        const isNgrok = !!process.env.NGROK_URL;
+        const returnBase = isNgrok ? process.env.NGROK_URL : originUrl;
+
         const preferenceClient = new Preference(clientMP);
         const preferenceResponse = await preferenceClient.create({
             body: {
-                items: cart.map(item => ({
-                    title: item.nombre,
-                    unit_price: Number(item.precio),
-                    quantity: Number(item.cantidad)
-                })),
+                items: [
+                    {
+                        title: "Compra en MATE ÚNICO (Incl. Envío)",
+                        description: "Total de los productos, envío y descuentos aplicados",
+                        unit_price: totalFinal,
+                        quantity: 1
+                    }
+                ],
                 external_reference: String(ventaId),
                 back_urls: {
-                    success: `${originUrl}/final`,
-                    failure: `${originUrl}/pago-tarjeta`,
-                    pending: `${originUrl}/pago-tarjeta`
-                }
+                    success: isNgrok ? `${returnBase}/api/checkout/success` : `${returnBase}/final`,
+                    failure: isNgrok ? `${returnBase}/api/checkout/failure` : `${returnBase}/pago-tarjeta`,
+                    pending: isNgrok ? `${returnBase}/api/checkout/pending` : `${returnBase}/pago-tarjeta`
+                },
+                auto_return: "approved"
             }
         });
 
@@ -700,32 +740,73 @@ app.post('/api/sync-products', async (req, res) => {
     }
 });
 
-// Confirmación de Pago desde el Frontend (Reemplaza Webhook local)
-app.post('/api/checkout/confirm', async (req, res) => {
-    const { payment_id, status, external_reference } = req.body;
+// Helper genérico para actualizar estado en Strapi post-MP
+async function updateStrapiEstado(ventaId, nuevoEstadoVenta) {
+    try {
+        const findReq = await fetch(`http://127.0.0.1:1337/api/pedidos?filters[id_venta_pg][$eq]=${ventaId}`);
+        const findRes = await findReq.json();
+        if (findRes.data && findRes.data.length > 0) {
+            const documentId = findRes.data[0].documentId;
+            const putReq = await fetch(`http://127.0.0.1:1337/api/pedidos/${documentId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ data: { estado_venta: nuevoEstadoVenta } })
+            });
+            if (!putReq.ok) console.error("⚠️ Error actualizando Strapi:", await putReq.text());
+        } else {
+            console.log(`⚠️ No se encontró pedido en Strapi con id_venta_pg=${ventaId} para actualizar.`);
+        }
+    } catch(err) {
+        console.error("No se pudo sync Strapi status", err.message);
+    }
+}
+
+// Endpoints intermediarios para recibir a Mercado Pago (sirven para ngrok)
+app.get('/api/checkout/success', async (req, res) => {
+    const paymentId = req.query.payment_id;
+    const status = req.query.status;
+    const externalRef = req.query.external_reference;
     
-    if (status === 'approved' && external_reference) {
+    console.log(`Llegó success de MP: paymentId=${paymentId}, status=${status}, externalRef=${externalRef}`);
+    
+    if (status === 'approved' && externalRef) {
         try {
-            // Verificamos el estado real en Mercado Pago usando el payment_id
             const paymentClient = new Payment(clientMP);
-            const paymentInfo = await paymentClient.get({ id: payment_id });
+            const paymentInfo = await paymentClient.get({ id: paymentId });
             
             if (paymentInfo.status === 'approved') {
-                await db.query("UPDATE venta SET estado = 'Aprobado' WHERE id = $1", [external_reference]);
-                console.log(`✅ Pago verificado y aprobado en DB. Venta ID: ${external_reference}`);
-                return res.json({ success: true });
+                await db.query("UPDATE venta SET estado = 'Aprobado' WHERE id = $1", [externalRef]);
+                await updateStrapiEstado(externalRef, 'Aprobado');
+                console.log(`✅ Pago verificado y aprobado. Venta ID: ${externalRef}`);
+            } else {
+                console.log(`⚠️ MP dice que no está aprobado. Estado real: ${paymentInfo.status}`);
             }
         } catch (error) {
-            console.error('❌ Error verificando pago en MP:', error.message);
-            return res.status(500).json({ success: false, error: 'Error verificando pago' });
+            console.error('❌ Error verificando pago en MP:', error.message || error);
         }
     }
     
-    // Si no es aprobado o faltan datos
-    res.json({ success: false });
+    const frontUrl = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
+    res.redirect(`${frontUrl}/final`);
 });
 
-// Webhook de Mercado Pago (para producción)
+app.get('/api/checkout/failure', async (req, res) => {
+    const externalRef = req.query.external_reference;
+    if (externalRef) {
+        try {
+            await db.query("UPDATE venta SET estado = 'Cancelado' WHERE id = $1", [externalRef]);
+            await updateStrapiEstado(externalRef, 'Cancelado');
+        } catch(e) {}
+    }
+    const frontUrl = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
+    res.redirect(`${frontUrl}/pago-tarjeta?error=rechazado`);
+});
+
+app.get('/api/checkout/pending', async (req, res) => {
+    const frontUrl = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
+    res.redirect(`${frontUrl}/final?status=pending`);
+});
+
 app.post('/api/webhook_mp', async (req, res) => {
     const paymentId = req.query['data.id'] || (req.body && req.body.data && req.body.data.id);
     const type = req.query.type || (req.body && req.body.type);
@@ -739,6 +820,7 @@ app.post('/api/webhook_mp', async (req, res) => {
                 const ventaId = paymentInfo.external_reference;
                 if (ventaId) {
                     await db.query("UPDATE venta SET estado = 'Aprobado' WHERE id = $1", [ventaId]);
+                    await updateStrapiEstado(ventaId, 'Aprobado');
                     console.log(`✅ Pago aprobado en MP para la venta ID: ${ventaId}`);
                 }
             }
@@ -747,9 +829,26 @@ app.post('/api/webhook_mp', async (req, res) => {
             return res.status(500).send('Error');
         }
     }
-    
-    // MP espera un HTTP 200 rápido
     res.status(200).send('OK');
+});
+
+// Sync DE Strapi A Backend
+app.post('/api/sync-estado-venta', async (req, res) => {
+    try {
+        const { id_venta_pg, estado_venta, estado_envio } = req.body;
+        if (!id_venta_pg) return res.status(400).json({ error: 'Falta id_venta_pg' });
+
+        // Actualizamos postgres
+        await db.query(
+            "UPDATE venta SET estado = $1, estado_envio = $2 WHERE id = $3", 
+            [estado_venta, estado_envio, id_venta_pg]
+        );
+        console.log(`🔄 Sync desde Strapi completado (Venta ${id_venta_pg} -> Venta: ${estado_venta}, Envio: ${estado_envio})`);
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Error sync-estado-venta:", err.message);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // Ponemos el servidor a escuchar

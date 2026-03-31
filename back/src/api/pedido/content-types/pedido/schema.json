@@ -1,0 +1,49 @@
+{
+  "kind": "collectionType",
+  "collectionName": "pedidos",
+  "info": {
+    "singularName": "pedido",
+    "pluralName": "pedidos",
+    "displayName": "Pedido"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "id_venta": {
+      "type": "integer"
+    },
+    "cliente_email": {
+      "type": "email"
+    },
+    "total": {
+      "type": "biginteger"
+    },
+    "estado_venta": {
+      "type": "enumeration",
+      "enum": [
+        "Pendiente",
+        "Aprobado",
+        "Rechazado",
+        "Cancelado"
+      ]
+    },
+    "estado_envio": {
+      "type": "enumeration",
+      "enum": [
+        "Pendiente de envío",
+        "Preparando",
+        "Despachado",
+        "En camino",
+        "Entregado"
+      ]
+    },
+    "metodo_envio": {
+      "type": "string"
+    },
+    "detalle_producto": {
+      "type": "text"
+    }
+  }
+}
