@@ -1,0 +1,771 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const session = require('express-session');
+const { OAuth2Client } = require('google-auth-library');
+const db = require('./db'); // Importamos nuestra conexión a la BD
+const { MercadoPagoConfig, Preference, Payment } = require('mercadopago');
+
+const app = express();
+const PORT = 3001; // Puerto para el back-end
+
+// Configuración de Mercado Pago
+const clientMP = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+// Middlewares: COOP/COEP headers to allow Google Auth popups to communicate back
+app.use((req, res, next) => {
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+    res.setHeader('Cross-Origin-Embedder-Policy', 'unsafe-none');
+    next();
+});
+
+// CORS: permitir uno o varios orígenes del frontend y credenciales para cookies de sesión
+const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
+const allowedOrigins = FRONTEND_ORIGIN.split(',').map(s => s.trim());
+app.use(cors({
+    origin: function(origin, callback) {
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.indexOf(origin) !== -1) return callback(null, true);
+        try {
+            const url = new URL(origin);
+            if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') return callback(null, true);
+        } catch (e) {}
+        return callback(null, true); // Allow all localhost in dev
+    },
+    credentials: true
+}));
+
+app.use(express.json());
+
+// Sessions: para mantener al usuario logueado entre peticiones
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'dev-session-secret',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { 
+        secure: false, // false for local http
+        httpOnly: true, 
+        maxAge: 1000 * 60 * 60 * 24,
+        sameSite: 'lax' // lax is recommended for local dev with different ports
+    },
+}));
+
+/*
+=================================================
+RUTA DE PRUEBA (para ver si todo funciona)
+=================================================
+*/
+app.get('/', (req, res) => {
+    res.send('API de Mate Único funcionando');
+});
+
+/*
+=================================================
+RUTA REAL: OBTENER TODOS LOS PRODUCTOS
+=================================================
+*/
+app.get('/api/productos', async (req, res) => {
+    try {
+    // Usamos el 'db' que importamos para hacer una consulta
+        const { rows } = await db.query('SELECT * FROM Producto');
+        res.json(rows); // Enviamos los productos como respuesta JSON
+    } catch (error) {
+        console.error('Error al obtener productos:', error);
+        res.status(500).json({ message: 'Error interno del servidor' });
+    }
+});
+
+/*
+=================================================
+RUTA: VERIFICAR ID TOKEN DE GOOGLE (POST)
+Recibe { credential } desde el frontend (ID token JWT)
+Verifica con Google y devuelve el payload (email, sub, name...)
+=================================================
+*/
+app.post('/auth/google', async (req, res) => {
+    const { credential } = req.body;
+    if (!credential) return res.status(400).json({ error: 'Missing credential' });
+    console.log('POST /auth/google received credential length:', credential ? credential.length : 0);
+    try {
+        const ticket = await googleClient.verifyIdToken({ idToken: credential, audience: process.env.GOOGLE_CLIENT_ID });
+        const payload = ticket.getPayload();
+        console.log('Google payload:', { email: payload.email, sub: payload.sub, name: payload.name });
+        // Buscar por email en la tabla Usuario
+                const email = payload.email;
+                const nombre = payload.given_name || 'SinNombre';
+                const apellido = payload.family_name || 'SinApellido';
+                    const foto = payload.picture || null;
+
+                let userId = null;
+                try {
+                    // Search for user using case-insensitive email
+                    const { rows } = await db.query('SELECT id FROM Usuario WHERE LOWER(email) = LOWER($1)', [email]);
+                    if (rows.length > 0) {
+                        userId = rows[0].id;
+                    } else {
+                        const insertQuery = `INSERT INTO Usuario (activo, fecha_registro, telefono, email, apellido, nombre, es_admin) VALUES (true, CURRENT_DATE, NULL, $1, $2, $3, false) RETURNING id`;
+                                // Try to insert with foto_url if column exists; if not, fall back
+                                let insertRes;
+                                try {
+                                    const insertQuery = `INSERT INTO Usuario (activo, fecha_registro, telefono, email, apellido, nombre, es_admin, foto_url) VALUES (true, CURRENT_DATE, NULL, $1, $2, $3, false, $4) RETURNING id`;
+                                    insertRes = await db.query(insertQuery, [email, apellido, nombre, foto]);
+                                } catch (e) {
+                                    // column foto_url may not exist; try without it
+                                    const insertQuery = `INSERT INTO Usuario (activo, fecha_registro, telefono, email, apellido, nombre, es_admin) VALUES (true, CURRENT_DATE, NULL, $1, $2, $3, false) RETURNING id`;
+                                    insertRes = await db.query(insertQuery, [email, apellido, nombre]);
+                                }
+                        userId = insertRes.rows[0].id;
+                    }
+                } catch (dbError) {
+                    console.error('❌ DB ERROR in /auth/google:', dbError.message, dbError.stack);
+                    
+                    req.session.user = { email: payload.email, nombre, apellido, picture: foto };
+                    return res.json({ success: true, fallback: true, payload, dbError: dbError.message });
+                }
+
+                // Guardar userId en la sesión
+                req.session.userId = userId;
+                // also save a minimal user object in session for fallback
+                req.session.user = { id: userId, email, nombre, apellido, picture: foto };
+                console.log('User logged in, id:', userId);
+                return res.json({ success: true, userId, payload });
+    } catch (error) {
+        console.error('Error verificando ID token:', error);
+        return res.status(401).json({ success: false, error: 'Invalid ID token' });
+    }
+});
+
+/*
+=================================================
+RUTA: OBTENER/ACTUALIZAR PERFIL DEL USUARIO
+GET  /api/user/me  => devuelve datos del usuario en sesión
+POST /api/user/me  => actualiza campos editables
+=================================================
+*/
+app.use((req, res, next) => {
+    console.log(`[DEBUG] ${req.method} ${req.path} - SessionID: ${req.sessionID} - UserID: ${req.session.userId}`);
+    next();
+});
+
+app.get('/api/user/me', async (req, res) => {
+    // Si no hay userId en la sesión, el usuario NO está logueado correctamente en el sistema
+    if (!req.session || !req.session.userId) {
+        return res.status(401).json({ loggedIn: false, error: 'No user session found' });
+    }
+    try {
+        // Buscamos TODOS los datos del usuario incluyendo su ciudad y provincia
+        const { rows } = await db.query(`
+            SELECT u.id, u.email, u.nombre, u.apellido, u.telefono, u.calle, u.numero, u.foto_url, u.favoritos_json,
+                   c.nombre as ciudad, c.provincia
+            FROM Usuario u
+            LEFT JOIN Ciudad c ON u.id_ciudad = c.ciudad_id
+            WHERE u.id = $1
+        `, [req.session.userId]);
+        
+        if (!rows || rows.length === 0) return res.status(404).json({ loggedIn: false });
+        
+        const user = rows[0];
+        // normalize foto_url field name to picture for frontend
+        user.picture = user.foto_url || (req.session.user && req.session.user.picture) || null;
+        
+        // parse favoritos_json into favoritos array if present
+        try {
+            user.favoritos = user.favoritos_json ? JSON.parse(user.favoritos_json) : [];
+            delete user.favoritos_json;
+        } catch (e) {
+            user.favoritos = [];
+        }
+        
+        return res.json({ loggedIn: true, user });
+    } catch (err) {
+        console.error('Error fetching user from DB:', err);
+        // fallback to session user if available
+        if (req.session && req.session.user) return res.json({ loggedIn: true, user: req.session.user });
+        return res.status(500).json({ loggedIn: false });
+    }
+});
+
+app.post('/api/user/me', async (req, res) => {
+    if (!req.session || !req.session.userId) return res.status(401).json({ success: false });
+    const { nombre, apellido, telefono, calle, numero, picture, provincia, ciudad } = req.body;
+    try {
+        let ciudadId = null;
+        if (ciudad && provincia) {
+            // Find or associate city/province
+            const { rows: findCiudad } = await db.query("SELECT ciudad_id FROM Ciudad WHERE nombre=$1 AND provincia=$2", [ciudad, provincia]);
+            if (findCiudad.length > 0) {
+                ciudadId = findCiudad[0].ciudad_id;
+            } else {
+                const ins = await db.query("INSERT INTO Ciudad (nombre, CP, provincia) VALUES ($1, $2, $3) RETURNING ciudad_id", [ciudad, null, provincia]);
+                ciudadId = ins.rows[0].ciudad_id;
+            }
+        }
+
+        // try to update including id_ciudad and handle optional foto_url
+        try {
+            await db.query(
+                `UPDATE Usuario SET nombre=$1, apellido=$2, telefono=$3, calle=$4, numero=$5, id_ciudad=$6, foto_url=COALESCE($7,foto_url) WHERE id=$8`,
+                [nombre, apellido, telefono, calle, Number(numero) || null, ciudadId, picture || null, req.session.userId]
+            );
+        } catch (e) {
+            // fallback if foto_url doesn't exist
+            await db.query(
+                `UPDATE Usuario SET nombre=$1, apellido=$2, telefono=$3, calle=$4, numero=$5, id_ciudad=$6 WHERE id=$7`,
+                [nombre, apellido, telefono, calle, Number(numero) || null, ciudadId, req.session.userId]
+            );
+        }
+
+        // refresh session user
+        req.session.user = { 
+            id: req.session.userId, 
+            email: req.session.user ? req.session.user.email : null, 
+            nombre, apellido, picture, telefono, calle, numero, ciudad, provincia 
+        };
+        return res.json({ success: true });
+    } catch (err) {
+        console.error('Error updating profile:', err);
+        // fallback: update session only
+        req.session.user = { ...(req.session.user || {}), nombre, apellido, telefono, calle, numero, picture, provincia, ciudad };
+        return res.status(500).json({ success: false, error: 'DB update failed' });
+    }
+});
+
+/*
+=================================================
+RUTA: AGREGAR/QUITAR FAVORITOS
+POST /api/user/favoritos
+=================================================
+*/
+app.post('/api/user/favoritos', async (req, res) => {
+    // Verificamos sesión
+    if (!req.session || !req.session.userId) {
+        return res.status(401).json({ success: false, error: 'No logueado' });
+    }
+    
+    const { id, nombre, color } = req.body;
+    const userId = req.session.userId;
+
+    try {
+        // 1. Buscamos los favoritos actuales del usuario
+        const { rows } = await db.query('SELECT favoritos_json FROM Usuario WHERE id = $1', [userId]);
+        
+        // 2. Parseamos el JSON (si está vacío, creamos un array nuevo)
+        let favoritos = [];
+        try {
+            favoritos = rows[0].favoritos_json ? JSON.parse(rows[0].favoritos_json) : [];
+        } catch (e) {
+            favoritos = [];
+        }
+
+        // 3. Lógica de Toggle: Si ya está, lo quitamos. Si no está, lo agregamos.
+        const index = favoritos.findIndex(f => String(f.id) === String(id));
+        
+        if (index > -1) {
+            favoritos.splice(index, 1); // Quitar de favoritos
+        } else {
+            favoritos.push({ id, nombre, color }); // Agregar a favoritos
+        }
+
+        // 4. Guardamos el nuevo array como JSON en la DB
+        await db.query('UPDATE Usuario SET favoritos_json = $1 WHERE id = $2', [JSON.stringify(favoritos), userId]);
+        
+        return res.json({ success: true, isFavorite: index === -1 });
+    } catch (err) {
+        console.error('Error en favoritos:', err);
+        return res.status(500).json({ success: false, error: 'Error de base de datos' });
+    }
+});
+
+/*
+=================================================
+RUTA: OBTENER VENTAS DEL USUARIO
+GET /api/user/me/ventas
+=================================================
+*/
+app.get('/api/user/me/ventas', async (req, res) => {
+    // If session has ventas (seeded), return them
+    if (req.session && req.session.ventas) return res.json({ success: true, ventas: req.session.ventas });
+    if (!req.session || !req.session.userId) return res.status(401).json({ success: false });
+    try {
+        // Get ventas with basic info - use simple query to avoid parameter issues
+        const userId = req.session.userId;
+        const ventasQuery = `SELECT id, fecha_venta, subtotal, descuento, total, estado, metodo_pago FROM venta WHERE id_usuario = ${userId} ORDER BY fecha_venta DESC`;
+        const { rows: ventas } = await db.query(ventasQuery);
+
+        // For each venta, get its details if they exist
+        for (let venta of ventas) {
+            try {
+                const detallesQuery = `SELECT dv.id_producto, dv.cantidad, dv.precio_unitario, dv.subtotal
+                    FROM detalle_venta dv
+                    WHERE dv.id_venta = ${venta.id}`;
+                const { rows: detalles } = await db.query(detallesQuery);
+
+                // Format details for frontend
+                venta.detalle = detalles.map(d => ({
+                    cantidad: d.cantidad,
+                    precio_unitario: d.precio_unitario,
+                    subtotal: d.subtotal,
+                    id_producto: d.id_producto,
+                    producto: {
+                        material: 'Producto'
+                    }
+                }));
+            } catch (detailErr) {
+                console.error('Error getting details for venta', venta.id, detailErr);
+                venta.detalle = [];
+            }
+        }
+
+        return res.json({ success: true, ventas: ventas });
+    } catch (err) {
+        console.error('Error fetching ventas:', err);
+        return res.status(500).json({ success: false, ventas: [] });
+    }
+});
+
+// DEBUG: seed sample user + ventas for local development
+app.post('/debug/seed_user', async (req, res) => {
+    if (process.env.NODE_ENV === 'production') return res.status(403).json({ ok: false });
+    try {
+        const email = 'Leomessi@gmail.com';
+        const nombre = 'Lionel Andres';
+        const apellido = 'Messi';
+        const foto = req.body.picture || 'https://i.pravatar.cc/150?img=12';
+
+        // upsert user by email
+        let userId;
+        try {
+            const find = await db.query('SELECT id FROM Usuario WHERE email = $1', [email]);
+            if (find.rows.length > 0) {
+                userId = find.rows[0].id;
+                await db.query('UPDATE Usuario SET nombre=$1, apellido=$2, foto_url=COALESCE($3,foto_url) WHERE id=$4', [nombre, apellido, foto, userId]);
+            } else {
+                try {
+                    const ins = await db.query('INSERT INTO Usuario (activo, fecha_registro, telefono, email, apellido, nombre, es_admin, foto_url) VALUES (true, $1, NULL, $2, $3, $4, false, $5) RETURNING id', [new Date('2025-02-27'), email, apellido, nombre, foto]);
+                    userId = ins.rows[0].id;
+                } catch (e) {
+                    const ins2 = await db.query('INSERT INTO Usuario (activo, fecha_registro, telefono, email, apellido, nombre, es_admin) VALUES (true, $1, NULL, $2, $3, $4, false) RETURNING id', [new Date('2025-02-27'), email, apellido, nombre]);
+                    userId = ins2.rows[0].id;
+                }
+            }
+        } catch (err) {
+            console.error('Seed user DB error:', err);
+            return res.status(500).json({ ok: false, error: 'DB error' });
+        }
+
+        // create ventas sample (avoid duplicates by checking existing ids)
+        const sampleVentas = [
+            { id: 1245, fecha: '2025-09-15', detalle: 'Mate Imperial - Negro (1 u.)', estado: 'Entregado', total: 27500 },
+            { id: 1238, fecha: '2025-09-02', detalle: 'Combo 1 (1 u.)', estado: 'Enviado', total: 50200 },
+            { id: 1227, fecha: '2025-06-20', detalle: 'Mate Camionero - Marron (1 u.)', estado: 'Pendiente de envío', total: 18000 },
+        ];
+
+        for (const v of sampleVentas) {
+            try {
+                const exists = await db.query('SELECT id FROM venta WHERE id = $1', [v.id]);
+                if (exists.rows.length === 0) {
+                    await db.query('INSERT INTO venta (id, id_usuario, fecha_venta, subtotal, descuento, total, estado) VALUES ($1, $2, $3, $4, $5, $6, $7)', [v.id, userId, v.fecha, v.total, 0, v.total, v.estado]);
+                }
+            } catch (e) {
+                console.warn('Could not insert venta', v.id, e.message);
+            }
+        }
+
+        // save some favorites as JSON in a placeholder column if exists
+        try {
+            await db.query('ALTER TABLE IF EXISTS Usuario ADD COLUMN IF NOT EXISTS favoritos_json TEXT');
+        } catch (e) {
+            // ignore
+        }
+        try {
+            const favs = JSON.stringify([
+                { nombre: 'Mate Imperial', color: 'Negro' },
+                { nombre: 'Mate Torpedo', color: 'Negro' },
+                { nombre: 'Mate Torpedo', color: 'Negro' },
+            ]);
+            await db.query('UPDATE Usuario SET favoritos_json = $1 WHERE id = $2', [favs, userId]);
+        } catch (e) {
+            // ignore
+        }
+
+        // attach to session
+        req.session.userId = userId;
+        req.session.user = { id: userId, email, nombre, apellido, picture: foto };
+
+        return res.json({ ok: true, userId });
+    } catch (err) {
+        console.error('Seed error', err);
+        return res.status(500).json({ ok: false });
+    }
+});
+
+// DEBUG: seed session-only sample (no DB required)
+app.post('/debug/seed_session', (req, res) => {
+    if (process.env.NODE_ENV === 'production') return res.status(403).json({ ok: false });
+    const user = {
+        id: -1,
+        email: 'Leomessi@gmail.com',
+        nombre: 'Lionel Andres',
+        apellido: 'Messi',
+        picture: 'https://i.pravatar.cc/150?img=12',
+        miembroDesde: '27/02/2025',
+        favoritos: [
+            { nombre: 'Mate Imperial', color: 'Negro' },
+            { nombre: 'Mate Torpedo', color: 'Negro' },
+            { nombre: 'Mate Torpedo', color: 'Negro' },
+        ],
+    };
+    req.session.user = user;
+    req.session.userId = null;
+    // seed ventas in session for display
+    req.session.ventas = [
+        { id: 1245, fecha_venta: '2025-09-15', detalle: 'Mate Imperial - Negro (1 u.)', estado: 'Entregado', total: 27500 },
+        { id: 1238, fecha_venta: '2025-09-02', detalle: 'Combo 1 (1 u.)', estado: 'Enviado', total: 50200 },
+        { id: 1227, fecha_venta: '2025-06-20', detalle: 'Mate Camionero - Marron (1 u.)', estado: 'Pendiente de envío', total: 18000 },
+    ];
+    return res.json({ ok: true });
+});
+
+app.get('/auth/me', async (req, res) => {
+    if (!req.session || !req.session.userId) return res.status(401).json({ loggedIn: false });
+    try {
+        const { rows } = await db.query(`
+            SELECT u.id, u.email, u.nombre, u.apellido, u.telefono, u.calle, u.numero, c.nombre as ciudad, c.provincia
+            FROM Usuario u
+            LEFT JOIN Ciudad c ON u.id_ciudad = c.ciudad_id
+            WHERE u.id = $1
+        `, [req.session.userId]);
+        if (!rows || rows.length === 0) return res.status(404).json({ loggedIn: false });
+        return res.json({ loggedIn: true, user: rows[0] });
+    } catch (err) {
+        console.error('Error in /auth/me:', err);
+        return res.status(500).json({ loggedIn: false });
+    }
+});
+
+// Cerrar sesión
+app.post('/auth/logout', (req, res) => {
+    req.session.destroy(err => {
+        if (err) {
+            console.error('Error destroying session:', err);
+            return res.status(500).json({ success: false });
+        }
+        res.clearCookie('connect.sid');
+        return res.json({ success: true });
+    });
+});
+
+app.post('/api/create_preference', async (req, res) => {
+    if (!req.session || !req.session.userId) return res.status(401).json({ error: 'No logueado' });
+
+    const { cart, checkoutData } = req.body;
+    const userId = req.session.userId;
+
+    let client;
+    try {
+        client = await db.getClient();
+
+        // 1. Resolver todos los IDs ANTES de iniciar la transacción
+        // *En PostgreSQL, si una consulta dentro de BEGIN falla y la atrapamos, toda la transacción queda abortada.*
+        // *Por eso hacemos la lectura previa de IDs por fuera.*
+        const resolvedCart = [];
+        for (const item of cart) {
+            let prodId = null;
+            let comboId = null;
+
+            // Estrategia 1: Buscar por documentId en tabla de mapeo
+            if (item.documentId) {
+                try {
+                    const { rows: mapped } = await client.query(
+                        `SELECT producto_id, combo_id FROM strapi_producto_map WHERE strapi_document_id = $1`,
+                        [item.documentId]
+                    );
+                    if (mapped.length > 0) {
+                        prodId = mapped[0].producto_id;
+                        comboId = mapped[0].combo_id;
+                    }
+                } catch (mapError) {
+                    console.log(`⚠️ Tabla de mapeo no lista aún, usando estrategia alternativa...`);
+                }
+            }
+
+            // Estrategia 2: Buscar por nombre/descripcion
+            if (!prodId && !comboId && item.nombre) {
+                const { rows: found } = await client.query(
+                    `SELECT id FROM producto WHERE LOWER(descripcion) = LOWER($1) LIMIT 1`,
+                    [item.nombre]
+                );
+                if (found.length > 0) {
+                    prodId = found[0].id;
+                } else {
+                    const { rows: foundCombo } = await client.query(
+                        `SELECT id FROM combo WHERE LOWER(descripcion) = LOWER($1) LIMIT 1`,
+                        [item.nombre]
+                    );
+                    if (foundCombo.length > 0) {
+                        comboId = foundCombo[0].id;
+                    }
+                }
+            }
+
+            // Estrategia 3: Fallback por ID directo
+            if (!prodId && !comboId) {
+                const tryId = parseInt(item.id, 10);
+                if (!isNaN(tryId)) {
+                    const { rows: check } = await client.query('SELECT id FROM producto WHERE id = $1', [tryId]);
+                    if (check.length > 0) prodId = check[0].id;
+                }
+            }
+
+            if (!prodId && !comboId) {
+                console.warn(`⚠️ No se encontró producto en PG para: "${item.nombre}" (documentId: ${item.documentId}, id: ${item.id})`);
+                throw new Error(`Producto "${item.nombre}" no encontrado en la base de datos`);
+            }
+
+            resolvedCart.push({
+                ...item,
+                prodId,
+                comboId
+            });
+        }
+
+        // 2. Iniciar transacción y guardar la compra
+        await client.query('BEGIN');
+
+        const subtotalVenta = cart.reduce((acc, item) => acc + (Number(item.precio) * Number(item.cantidad)), 0);
+        const totalFinal = checkoutData.totalFinal || (subtotalVenta + 4000);
+
+        console.log(`Iniciando compra para usuario ID: ${userId}`);
+
+        const ventaRes = await client.query(
+            `INSERT INTO venta (id_usuario, fecha_venta, subtotal, descuento, total, estado, metodo_pago, id_cupon)
+             VALUES ($1, CURRENT_DATE, $2, $3, $4, 'Pendiente', 'Mercado Pago', $5)
+             RETURNING id`,
+            [userId, subtotalVenta, checkoutData.descuento || 0, totalFinal, checkoutData.id_cupon || null]
+        );
+
+        const ventaId = ventaRes.rows[0].id;
+        
+        if (checkoutData.id_cupon) {
+            await client.query('UPDATE Cupon SET usado = true WHERE id = $1', [checkoutData.id_cupon]);
+        }
+
+        // 3. Insertar en detalle_venta
+        for (const item of resolvedCart) {
+            const subtotalItem = Number(item.precio) * Number(item.cantidad);
+
+            await client.query(
+                `INSERT INTO detalle_venta (id_venta, id_producto, id_combo, cantidad, precio_unitario, subtotal, total)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                [ventaId, item.prodId || null, item.comboId || null, item.cantidad, item.precio, subtotalItem, subtotalItem]
+            );
+        }
+
+        await client.query('COMMIT');
+        console.log("✅ Venta guardada temporalmente (Pendiente MP). ID:", ventaId);
+
+        // 4. Crear Preferencia en Mercado Pago
+        const originUrl = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
+        const preferenceClient = new Preference(clientMP);
+        const preferenceResponse = await preferenceClient.create({
+            body: {
+                items: cart.map(item => ({
+                    title: item.nombre,
+                    unit_price: Number(item.precio),
+                    quantity: Number(item.cantidad)
+                })),
+                external_reference: String(ventaId),
+                back_urls: {
+                    success: `${originUrl}/final`,
+                    failure: `${originUrl}/pago-tarjeta`,
+                    pending: `${originUrl}/pago-tarjeta`
+                }
+            }
+        });
+
+        res.json({ success: true, init_point: preferenceResponse.init_point, ventaId });
+
+    } catch (err) {
+        if (client) await client.query('ROLLBACK');
+        console.error('❌ ERROR SQL REAL:', err.message);
+        res.status(500).json({ error: err.message });
+    } finally {
+        if (client) client.release();
+    }
+});
+
+// GET cupon parameters
+app.get('/api/cupones/:code', async (req, res) => {
+    try {
+        const { code } = req.params;
+        const { rows } = await db.query(
+            "SELECT id, tipo_descuento, valor_descuento FROM Cupon WHERE codigo = $1 AND activo = true AND usado = false AND CURRENT_DATE BETWEEN fecha_inicio AND fecha_vencimiento",
+            [code.toUpperCase()]
+        );
+        if (rows.length > 0) {
+            res.json({ success: true, id_cupon: rows[0].id, tipo: rows[0].tipo_descuento, valor: rows[0].valor_descuento });
+        } else {
+            res.json({ success: false, message: 'Cupón inválido o expirado' });
+        }
+    } catch (error) {
+        console.error('Coupon DB Error:', error);
+        res.status(500).json({ success: false, message: 'Error de servidor verificando cupón' });
+    }
+});
+
+/*
+=================================================
+RUTA: SYNC INICIAL DE PRODUCTOS STRAPI → POSTGRESQL
+=================================================
+*/
+app.post('/api/sync-products', async (req, res) => {
+    try {
+        // 1. Crear tabla de mapeo si no existe (con combo_id)
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS strapi_producto_map (
+                strapi_document_id VARCHAR(255) PRIMARY KEY,
+                producto_id INT REFERENCES Producto(id),
+                combo_id INT REFERENCES Combo(id)
+            )
+        `);
+
+        // Si existe, asegurarse de que tenga combo_id (compatibilidad)
+        try {
+            await db.query(`ALTER TABLE strapi_producto_map ADD COLUMN combo_id INT REFERENCES Combo(id)`);
+        } catch (e) { /* Ya existe */ }
+
+        // 2. Traer todos los productos de Strapi
+        const strapiRes = await fetch('http://localhost:1337/api/productos?populate=*&pagination[limit]=100');
+        const strapiData = await strapiRes.json();
+        const strapiProducts = strapiData.data || [];
+
+        let synced = 0;
+        let skipped = 0;
+
+        for (const prod of strapiProducts) {
+            const documentId = prod.documentId || String(prod.id);
+            const isCombo = prod.categoria === 'combo_simple' || prod.categoria === 'combo_completo';
+            const nombre = prod.nombre || 'Sin nombre';
+
+            // Ver si ya está mapeado
+            const { rows: existing } = await db.query(
+                'SELECT producto_id, combo_id FROM strapi_producto_map WHERE strapi_document_id = $1',
+                [documentId]
+            );
+            if (existing.length > 0) {
+                skipped++;
+                continue;
+            }
+
+            let pgId = null;
+            let tableToUse = null;
+
+            if (isCombo) {
+                const tipo_combo = prod.categoria === 'combo_simple' ? 'mate + bombilla' : 'mate + bombilla + bolso';
+                const { rows: match } = await db.query('SELECT id FROM combo WHERE LOWER(descripcion) = LOWER($1) LIMIT 1', [nombre]);
+                if (match.length > 0) {
+                    pgId = match[0].id;
+                } else {
+                    const insertRes = await db.query(
+                        `INSERT INTO combo (descripcion, tipo_combo, fecha_creacion, grabado, cantidad_disp, umbral_min, precio)
+                         VALUES ($1, $2, CURRENT_DATE, $3, 10, 5, $4) RETURNING id`,
+                        [nombre, tipo_combo, prod.grabado || false, Number(prod.precio) || 0]
+                    );
+                    pgId = insertRes.rows[0].id;
+                }
+                tableToUse = 'combo';
+            } else {
+                let color = 'Negro';
+                if (prod.color_negro) color = 'Negro';
+                else if (prod.color_marron) color = 'Marron';
+                else if (prod.color_blanco) color = 'Blanco';
+                else if (prod.color_gris) color = 'Gris';
+
+                const { rows: match } = await db.query('SELECT id FROM producto WHERE LOWER(descripcion) = LOWER($1) LIMIT 1', [nombre]);
+                if (match.length > 0) {
+                    pgId = match[0].id;
+                } else {
+                    const insertRes = await db.query(
+                        `INSERT INTO producto (material, color, dimensiones, capacidad, precio, descripcion, grabado, cantidad_disp)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+                        [prod.material || 'calabaza', color, 10.0, 200, Number(prod.precio) || 0, nombre, prod.grabado || false, 10]
+                    );
+                    pgId = insertRes.rows[0].id;
+                }
+                tableToUse = 'producto';
+            }
+
+            // Crear mapeo
+            await db.query(
+                'INSERT INTO strapi_producto_map (strapi_document_id, producto_id, combo_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+                [documentId, tableToUse === 'producto' ? pgId : null, tableToUse === 'combo' ? pgId : null]
+            );
+            synced++;
+            console.log(`✅ Sync: "${nombre}" (Strapi ${documentId}) → PG ${tableToUse}.id=${pgId}`);
+        }
+
+        res.json({ success: true, synced, skipped, total: strapiProducts.length });
+    } catch (err) {
+        console.error('❌ Error en sync:', err.message);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Confirmación de Pago desde el Frontend (Reemplaza Webhook local)
+app.post('/api/checkout/confirm', async (req, res) => {
+    const { payment_id, status, external_reference } = req.body;
+    
+    if (status === 'approved' && external_reference) {
+        try {
+            // Verificamos el estado real en Mercado Pago usando el payment_id
+            const paymentClient = new Payment(clientMP);
+            const paymentInfo = await paymentClient.get({ id: payment_id });
+            
+            if (paymentInfo.status === 'approved') {
+                await db.query("UPDATE venta SET estado = 'Aprobado' WHERE id = $1", [external_reference]);
+                console.log(`✅ Pago verificado y aprobado en DB. Venta ID: ${external_reference}`);
+                return res.json({ success: true });
+            }
+        } catch (error) {
+            console.error('❌ Error verificando pago en MP:', error.message);
+            return res.status(500).json({ success: false, error: 'Error verificando pago' });
+        }
+    }
+    
+    // Si no es aprobado o faltan datos
+    res.json({ success: false });
+});
+
+// Webhook de Mercado Pago (para producción)
+app.post('/api/webhook_mp', async (req, res) => {
+    const paymentId = req.query['data.id'] || (req.body && req.body.data && req.body.data.id);
+    const type = req.query.type || (req.body && req.body.type);
+    
+    if (type === 'payment' && paymentId) {
+        try {
+            const paymentClient = new Payment(clientMP);
+            const paymentInfo = await paymentClient.get({ id: paymentId });
+            
+            if (paymentInfo.status === 'approved') {
+                const ventaId = paymentInfo.external_reference;
+                if (ventaId) {
+                    await db.query("UPDATE venta SET estado = 'Aprobado' WHERE id = $1", [ventaId]);
+                    console.log(`✅ Pago aprobado en MP para la venta ID: ${ventaId}`);
+                }
+            }
+        } catch (error) {
+            console.error('❌ Error al procesar webhook de MP:', error);
+            return res.status(500).send('Error');
+        }
+    }
+    
+    // MP espera un HTTP 200 rápido
+    res.status(200).send('OK');
+});
+
+// Ponemos el servidor a escuchar
+app.listen(PORT, () => {
+    console.log(`Servidor corriendo en http://localhost:${PORT}`);
+});

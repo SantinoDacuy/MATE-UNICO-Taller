@@ -1,0 +1,321 @@
+/* ---------------------------------------------------- */
+/* 1. RESET Y FUENTES (Consistencia) */
+/* ---------------------------------------------------- */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Roboto', sans-serif;
+    color: #333;
+    background-color: #fff;
+}
+
+/* ---------------------------------------------------- */
+/* 2. NAVBAR Y PATH (Consistencia con otras vistas) */
+/* ---------------------------------------------------- */
+.header-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #000;
+    color: #fff;
+    padding: 15px 50px;
+    font-weight: 700;
+    font-size: 18px;
+    border-top: 3px solid #007bff; 
+}
+
+.nav-actions {
+    display: flex;
+    gap: 20px;
+}
+
+.page-path {
+    font-size: 14px;
+    color: #666;
+    padding: 20px 50px 0;
+    margin-bottom: 20px;
+}
+
+/* ---------------------------------------------------- */
+/* 3. CONTENEDOR PRINCIPAL (GRID) */
+/* ---------------------------------------------------- */
+.checkout-contenedor-principal {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 50px 50px;
+    display: grid;
+    /* 2 columnas iguales */
+    grid-template-columns: 1fr 420px; 
+    gap: 50px;
+    min-height: 75vh;
+}
+
+.titulo-carrito {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 30px;
+}
+
+
+/* ---------------------------------------------------- */
+/* 4. COLUMNA IZQUIERDA (Carrito y Resumen) */
+/* ---------------------------------------------------- */
+.checkout-columna-izquierda {
+    padding-right: 50px; 
+    border-right: 1px solid #ddd; /* El separador vertical sutil */
+}
+
+/* Items del Carrito */
+.producto-item-checkout {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px;
+    margin-bottom: 12px;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 8px 22px rgba(12,20,30,0.04);
+}
+
+.productos-lista-checkout {
+    margin-bottom: 30px;
+}
+
+.producto-imagen-checkout {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+.producto-imagen-checkout{ border-radius:8px; transition:transform .2s ease; }
+.producto-imagen-checkout:hover{ transform:scale(1.03); }
+
+.producto-detalle-checkout {
+    flex-grow: 1;
+    font-size: 14px;
+}
+
+.nombre-producto-checkout {
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 3px;
+}
+
+.color-producto-checkout, .cantidad-producto-checkout {
+    color: #666;
+}
+
+.precio-producto-checkout {
+    font-weight: 700;
+    margin-top: 5px;
+}
+
+.eliminar-link {
+    font-size: 12px;
+    color: #000;
+    text-decoration: underline;
+    cursor: pointer;
+}
+.eliminar-link{ background:transparent; border:none; padding:8px 10px; border-radius:6px; color:var(--muted); }
+.eliminar-link:hover{ color:#b00000; background:rgba(0,0,0,0.03); }
+
+/* Cupón de Descuento */
+.cupon-descuento {
+    display: flex;
+    gap: 0;
+    margin-bottom: 30px;
+}
+
+.cupon-descuento input {
+    flex-grow: 1;
+    padding: 10px;
+    border: 1px solid #ccc;
+    font-size: 14px;
+}
+
+.btn-agregar-cupon {
+    background-color: #007bff; /* Color azul */
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    font-size: 14px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+/* Resumen de la Orden */
+.resumen-orden { font-size:14px; }
+
+.card-resumen{
+    background:#fff; padding:16px; border-radius:12px; box-shadow:0 14px 40px rgba(12,20,30,0.06); position:sticky; top:84px;
+}
+
+.resumen-fila {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    margin-bottom: 3px;
+}
+
+.resumen-label {
+    color: #666;
+}
+
+.resumen-valor {
+    font-weight: 500;
+}
+
+.descuento-valor {
+    color: #dc3545; /* Rojo para descuentos */
+}
+
+.resumen-separador {
+    border: 0;
+    border-top: 1px solid #ccc;
+    margin: 10px 0;
+}
+
+.resumen-total {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+
+/* ---------------------------------------------------- */
+/* 5. COLUMNA DERECHA (Dirección y Formulario) */
+/* ---------------------------------------------------- */
+.checkout-columna-derecha {
+    position: relative;
+}
+
+/* Pasos del Checkout */
+.pasos-checkout {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 60px;
+}
+
+.pasos-checkout span {
+    color: #888;
+    font-size: 14px;
+}
+
+.paso-activo {
+    color: #000;
+    font-weight: bold;
+    font-size: 20px;
+}
+
+.pasos-checkout .line {
+    width: 50px;
+    height: 1px;
+    background-color: #ccc;
+}
+
+.titulo-informacion {
+    font-size: 20px;
+    font-weight: 600;
+    margin-top: 30px;
+    margin-bottom: 20px;
+}
+
+/* Formulario */
+.formulario-direccion input, .form-dropdown-dir {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    background-color: #fff;
+    font-size: 14px;
+    height: 40px;
+    margin-bottom: 15px;
+}
+
+.form-fila-direccion {
+    display: flex;
+    gap: 15px;
+    width: 100%;
+}
+
+.form-fila-direccion input, .form-dropdown-dir {
+    flex: 1;
+}
+
+.form-dropdown-dir {
+    /* Ajuste para que se parezca al diseño (solo muestra el borde inferior en la captura) */
+    background-color: #fff; 
+}
+
+.checkbox-guardar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 14px;
+    margin-top: 5px;
+    margin-bottom: 25px;
+    cursor: pointer;
+}
+
+.checkbox-guardar input {
+    width: 16px;
+    height: 16px;
+    margin-left: 8px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.btn-continuar {
+    background-color: #080808;
+    color: white;
+    border: none;
+    padding: 15px 80px;
+    font-size: 16px;
+    cursor: pointer;
+    width: 100%;
+}
+.btn-continuar:hover {
+    background-color: #222;
+}
+
+/* Toast */
+.checkout-toast{ position:fixed; right:20px; bottom:20px; background:rgba(0,0,0,0.85); color:#fff; padding:10px 14px; border-radius:8px; box-shadow:0 8px 18px rgba(0,0,0,0.2); z-index:9999; }
+
+/* Utilities */
+.card-item{ background:#fff; }
+
+@media(max-width:900px){
+    .checkout-contenedor-principal{ grid-template-columns: 1fr; padding:0 20px 40px; }
+    .checkout-columna-izquierda{ border-right:0; padding-right:0; }
+    .card-resumen{ position:static; margin-top:20px; }
+}
+
+/* Imagen de Fondo (Monstera) */
+.monstera-fondo {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 250px;
+    height: 250px;
+    background: url('/path/to/monstera-light.png') no-repeat right bottom; 
+    background-size: contain;
+    opacity: 0.3;
+    z-index: -1;
+}
+
+/* ---------------------------------------------------- */
+/* 6. FOOTER (Consistencia) */
+/* ---------------------------------------------------- */
+.footer-web {
+    background-color: #000;
+    color: #fff;
+    padding: 30px 50px;
+    margin-top: 50px;
+    /* ... Estilos del footer ... */
+}

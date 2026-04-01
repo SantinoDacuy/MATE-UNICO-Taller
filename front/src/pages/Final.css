@@ -1,0 +1,85 @@
+.success-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    text-align: center;
+    font-family: 'Arial', sans-serif; /* O la fuente que estés usando */
+    position: relative;
+    overflow: hidden;
+    padding: 20px;
+  }
+  
+  .success-content {
+    max-width: 600px;
+    z-index: 2;
+  }
+  
+  /* Ícono de check */
+  .check-icon {
+    width: 60px;
+    margin: 0 auto 30px;
+  }
+  
+  /* Títulos */
+  .thanks-title {
+    font-size: 36px;
+    font-weight: 800;
+    color: #2D3133;
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+  }
+  
+  .processing-subtitle {
+    font-size: 28px;
+    font-weight: 700;
+    color: #3C4144;
+    margin-bottom: 40px;
+  }
+  
+  /* Párrafo descriptivo */
+  .success-description {
+    font-size: 18px;
+    line-height: 1.5;
+    color: #333;
+    margin-bottom: 40px;
+    font-weight: 400;
+  }
+  
+  /* Botón Home (con borde azul) */
+  .btn-home {
+    background: white;
+    color: #2E7CFF;
+    border: 1px solid #2E7CFF;
+    padding: 12px 45px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .btn-home:hover {
+    background-color: #2E7CFF;
+    color: white;
+  }
+  
+  /* Hojas decorativas (Reutilizando el concepto anterior) */
+  .leaf-decoration {
+    position: absolute;
+    bottom: -20px;
+    width: 350px;
+    height: 350px;
+    background-image: url('tu-imagen-de-hoja.png'); /* Asegúrate de tener la imagen */
+    background-size: contain;
+    background-repeat: no-repeat;
+    opacity: 0.5;
+    z-index: 1;
+  }
+  
+  .leaf-decoration.left {
+    left: -50px;
+  }
+  
+  .leaf-decoration.right {
+    right: -50px;
+    transform: scaleX(-1);
+  }

@@ -1,0 +1,233 @@
+/* ---------------------------------------------------- */
+/* 1. RESET Y FUENTES (Replicando el estilo de Perfil) */
+/* ---------------------------------------------------- */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Roboto', sans-serif;
+    color: #333;
+    background-color: #fff; /* El fondo principal es blanco en esta vista */
+}
+
+:root{
+    --bg:#f7f7f7;
+    --card:#ffffff;
+    --muted:#6b6b6b;
+    --accent:#000000;
+    --accent-2:#007bff;
+    --shadow: 0 8px 24px rgba(12,20,30,0.06);
+}
+
+/* ---------------------------------------------------- */
+/* 2. NAVBAR Y PATH (Replicando el estilo de Perfil) */
+/* ---------------------------------------------------- */
+.header-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #000;
+    color: #fff;
+    padding: 15px 50px;
+    font-weight: 700;
+    font-size: 18px;
+    /* Línea azul sutil arriba que se ve en la captura */
+    border-top: 3px solid #007bff; 
+}
+
+.nav-actions {
+    display: flex;
+    gap: 20px;
+}
+
+.page-path {
+    font-size: 14px;
+    color: #666;
+    padding: 20px 50px 0;
+    margin-bottom: 20px;
+}
+
+/* ---------------------------------------------------- */
+/* 3. CONTENIDO PRINCIPAL DEL CARRITO */
+/* ---------------------------------------------------- */
+.carrito-contenedor {
+    max-width: 900px; /* Ancho ajustado al diseño */
+    margin: 0 auto;
+    padding: 0 50px 50px;
+    position: relative;
+    background-color: var(--bg);
+    /* La hoja de la planta de fondo (opcional) */
+    background: url('/path/to/monstera-light.png') no-repeat right bottom;
+    background-size: 250px;
+    background-position-x: right 0px;
+    background-position-y: bottom 50px;
+}
+
+.carrito-titulo {
+    font-size: 48px;
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+
+.carrito-subtitulo {
+    font-size: 16px;
+    color: #666;
+    margin-bottom: 40px;
+}
+
+/* ---------------------------------------------------- */
+/* 4. PRODUCTOS EN LISTA */
+/* ---------------------------------------------------- */
+.producto-item {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 18px;
+    margin-bottom: 18px;
+    background: var(--card);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+}
+
+.productos-lista {
+    margin-bottom: 40px;
+}
+
+.producto-imagen {
+    width: 150px;
+    height: 150px;
+    object-fit: cover;
+    flex-shrink: 0; /* No permite que la imagen se achique */
+}
+.producto-imagen{
+    border-radius: 10px;
+    transition: transform .25s ease, box-shadow .25s ease;
+}
+.producto-imagen:hover{ transform: scale(1.05); box-shadow: 0 8px 22px rgba(0,0,0,0.08); }
+
+.producto-detalle {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.producto-nombre {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+
+.producto-color {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 10px;
+}
+
+.producto-precio {
+    font-size: 20px;
+    font-weight: 500;
+    margin-top: 15px; /* Espacio después del control de cantidad */
+}
+
+/* Control de Cantidad (Mini-Input) */
+.control-cantidad {
+    display: flex;
+    align-items: center;
+    border: 1px solid #ddd;
+    width: 98px; /* más espacio para botones */
+    font-size: 14px;
+    background-color: #f8f8f8;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.btn-cantidad {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+    font-weight: bold;
+    color: #333;
+}
+
+.cantidad-actual {
+    flex-grow: 1;
+    text-align: center;
+    padding: 5px 0;
+    border-left: 1px solid #ccc;
+    border-right: 1px solid #ccc;
+}
+
+/* Botón Eliminar */
+.btn-eliminar {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 6px 10px;
+    margin-left: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 8px;
+}
+.btn-eliminar:hover{ color: #b00000; }
+
+.eliminar-x {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+/* ---------------------------------------------------- */
+/* 5. BOTÓN CONFIRMAR */
+/* ---------------------------------------------------- */
+.confirmar-contenedor {
+    display: flex;
+    justify-content: flex-start;
+    margin-top: 30px;
+    width: 100%;
+}
+
+.btn-confirmar {
+    background-color: #080808;
+    color: white;
+    border: none;
+    padding: 15px 80px;
+    font-size: 16px;
+    cursor: pointer;
+    width: 100%;
+    max-width: 900px;
+}
+.btn-confirmar:hover {
+    background-color: #222;
+}
+
+/* Toast básico */
+.cart-toast {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    background: rgba(0,0,0,0.85);
+    color: #fff;
+    padding: 10px 14px;
+    border-radius: 8px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    z-index: 9999;
+}
+
+/* ---------------------------------------------------- */
+/* 6. FOOTER (Replicando el estilo de Perfil) */
+/* ---------------------------------------------------- */
+.footer-web {
+    background-color: #000;
+    color: #fff;
+    padding: 30px 50px;
+    margin-top: 50px;
+    /* Asegúrate de incluir el contenido de 3 columnas del footer aquí */
+}

@@ -1,0 +1,181 @@
+/* styles.css - Estilos para header.html y footer.html (Mate Único) */
+:root{
+  --bg:#0b0b0b;
+  --fg:#ffffff;
+  --muted:#9fa3a6;
+  --accent:#e6c07b;
+  --accent-2:#caa14e;
+  --surface: rgba(255,255,255,0.03);
+  --radius:10px;
+}
+
+/* Reset básico para componentes */
+.mu-header, .mu-footer { box-sizing:border-box; width:100%; color-scheme: dark; }
+.mu-header * , .mu-footer * { box-sizing:inherit; }
+
+/* HEADER */
+.mu-header { background: #0b0b0b !important; color:var(--fg); border-bottom:1px solid rgba(255,255,255,0.03); position: relative; z-index: 100; }
+.mu-header__inner{ max-width:1200px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:14px 20px; gap:16px; }
+.mu-header__left { flex:1 1 24%; display:flex; align-items:center; }
+.mu-header__center{ flex:1 1 52%; display:flex; align-items:center; justify-content:center; }
+.mu-header__right{ flex:1 1 24%; display:flex; align-items:center; justify-content:flex-end; gap:14px; }
+
+/* Brand link: force white/gold, override default blue anchor color */
+.mu-brand{ display:flex; align-items:center; gap:8px; text-decoration:none !important; color:var(--fg) !important; }
+.mu-brand:link, .mu-brand:visited, .mu-brand:hover, .mu-brand:active { color:var(--fg) !important; text-decoration:none !important; }
+.mu-logo{ height:44px; width:auto; display:block; }
+.mu-logo-inline{ height:34px; width:auto; display:inline-block; margin:0 6px; vertical-align:middle; transform: translateY(-4px); }
+.mu-brand-text{ font-weight:800; font-size:1.04rem; color:#ffffff !important; display:inline-block; vertical-align:middle; line-height:1; }
+
+/* Target spans directly inside the brand link for maximum specificity */
+.mu-header .mu-brand span { color: #ffffff !important; font-weight:800; font-size:1.04rem; }
+.mu-header .mu-brand span:first-of-type { color: #ffffff !important; font-weight:700; letter-spacing:0.2px; }
+.mu-header .mu-brand span:last-of-type { color: #caa14e !important; font-weight:800; letter-spacing:0.6px; }
+a.mu-brand span { color: #ffffff !important; }
+a.mu-brand span:last-of-type { color: #caa14e !important; }
+
+/* Distinguish left and right brand words */
+.mu-brand .mu-brand-text:first-of-type{ color:#ffffff !important; font-weight:700; letter-spacing:0.2px; }
+.mu-brand .mu-brand-text:last-of-type{ color:#caa14e !important; font-weight:800; letter-spacing:0.6px; }
+
+/* Subtle separation of brand from background */
+.mu-brand-text{ text-shadow: 0 1px 0 rgba(0,0,0,0.25); }
+
+.mu-search{ display:flex; align-items:center; gap:8px; background:var(--surface); padding:8px 12px; border-radius:12px; width:100%; max-width:620px; }
+.mu-search__input{ background:transparent; border:0; color:var(--fg); outline:none; flex:1; padding:6px 6px; font-size:0.95rem; }
+.mu-search__input::placeholder{ color:var(--muted); }
+.mu-search__button{ background:transparent; border:0; color:var(--muted); display:inline-flex; align-items:center; justify-content:center; padding:6px; cursor:pointer; }
+.mu-search__button svg{ color:var(--muted); }
+
+/* Icons: override default anchor blue */
+.mu-icon{ color:var(--fg) !important; text-decoration:none !important; display:inline-flex; align-items:center; gap:8px; padding:8px; border-radius:10px; transition:transform .12s ease, background .12s ease; }
+.mu-icon:link, .mu-icon:visited, .mu-icon:hover, .mu-icon:active { color:var(--fg) !important; text-decoration:none !important; }
+.mu-icon:hover{ transform:translateY(-3px); background:var(--surface); }
+.mu-badge{ background:#e6c07b !important; color:#0b0b0b !important; padding:4px 8px; border-radius:999px; font-weight:700; margin-left:6px; font-size:0.78rem; }
+/* hide badge when count is zero (use data-count attribute) */
+.mu-badge[data-count="0"]{ display:none !important; }
+
+/* filtro: enlace de texto en el header, igual al estilo de "Ingresar" (gris apagado) */
+.mu-filter-link{
+  background:transparent;
+  color:var(--muted); /* mismo gris que el nombre de perfil */
+  border:0;
+  padding:8px 10px;
+  font-size:0.95rem;
+  font-weight:600;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  white-space:nowrap;
+  flex-shrink:0;
+  z-index:1100;
+  margin-right:12px;
+  transition: color .15s ease;
+}
+.mu-filter-link:hover{
+  color:var(--fg);
+}
+.mu-filter-link::after{
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-right: 1px solid currentColor;
+  border-bottom: 1px solid currentColor;
+  transform: rotate(45deg);
+  margin-left: 6px;
+  vertical-align: middle;
+}
+/* Profile area */
+.mu-profile{ display:flex; align-items:center; gap:8px; }
+.mu-profile-name{ color:var(--muted) !important; margin-left:6px; font-weight:600; font-size:0.92rem; }
+.mu-logout{ background:transparent; border:1px solid rgba(255,255,255,0.04); color:var(--muted); padding:6px 10px; border-radius:8px; cursor:pointer; margin-left:8px; }
+.mu-logout:hover{ color:var(--fg); border-color:rgba(255,255,255,0.08); }
+
+/* badge pulse animation on update */
+.mu-badge.pulse{ animation: mu-pulse 700ms ease; }
+@keyframes mu-pulse{ 0%{ transform: scale(1); } 40%{ transform: scale(1.22); } 100%{ transform: scale(1); } }
+
+/* FOOTER */
+.mu-footer { background: #060606 !important; color:var(--fg); padding:40px 16px 18px; border-top:1px solid rgba(255,255,255,0.03); position: relative; z-index: 100; }
+.mu-footer__inner{ max-width:1200px; margin:0 auto; display:grid; grid-template-columns: 220px 1fr 1fr 300px; gap:28px; align-items:start; }
+.mu-footer__brand-col{ padding-right:6px; }
+.mu-footer__logo{ height:42px; display:block; max-width:160px; object-fit:contain; }
+.mu-footer__tag{ color:var(--muted); margin-top:10px; font-size:0.95rem; max-width:220px; }
+.mu-footer__socials{ display:flex; gap:10px; margin-top:12px; }
+.mu-social{ color:var(--muted); display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:8px; background:transparent; border:1px solid rgba(255,255,255,0.03); }
+.mu-social:hover{ color:var(--fg); background:var(--surface); }
+
+.mu-footer__links-col h4{ margin-bottom:10px; color:var(--fg); }
+.mu-links{ list-style:none; margin:0; padding:0; }
+.mu-links li{ margin:8px 0; }
+.mu-links a{ color: #9fa3a6 !important; text-decoration:none !important; transition:color .12s ease; }
+.mu-links a:link, .mu-links a:visited { color: #9fa3a6 !important; text-decoration:none !important; }
+.mu-links a:hover{ color: #ffffff !important; }
+
+.mu-newsletter{ display:flex; gap:8px; margin-top:10px; }
+.mu-news-input{ flex:1; padding:10px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.04); background:transparent; color:var(--fg); }
+.mu-news-button{ padding:10px 14px; border-radius:8px; background:linear-gradient(90deg, #e6c07b, #caa14e) !important; border:0; color:#0b0b0b; font-weight:700; cursor:pointer; }
+
+.mu-footer__bottom{ max-width:1200px; margin:18px auto 0; padding-top:8px; border-top:1px solid rgba(255,255,255,0.03); text-align:center; color:var(--muted); font-size:0.9rem; }
+
+/* Responsive: mobile stack */
+@media (max-width:900px){
+  .mu-header__inner{ flex-direction:row; gap:8px; }
+  .mu-header__left{ flex-basis:30%; }
+  .mu-header__center{ flex-basis:40%; }
+  .mu-header__right{ flex-basis:30%; }
+  .mu-footer__inner{ grid-template-columns: 1fr; gap:18px; }
+  .mu-footer__links-col, .mu-footer__newsletter-col, .mu-footer__brand-col{ padding:0; }
+}
+
+/* Restrict gallery/product images to avoid huge images */
+.gallery img, .product img, .hero-image, .hero-right img {
+  max-width:100%;
+  max-height:360px;
+  width:auto;
+  height:auto;
+  object-fit:cover;
+}
+
+/* Slight elevation for cards and images */
+.product img, .seller-card img, .hero-image {
+  border-radius:8px;
+  box-shadow: 0 6px 18px rgba(3,3,3,0.45);
+}
+
+/* Small utility */
+/* Small utility — override all anchor colors inside footer/header */
+.mu-footer a, .mu-header a{ -webkit-tap-highlight-color: rgba(255,255,255,0.06); color: #9fa3a6 !important; text-decoration: none !important; }
+.mu-footer a:link, .mu-footer a:visited, .mu-header a:link, .mu-header a:visited { color: #9fa3a6 !important; text-decoration: none !important; }
+.mu-footer a:hover, .mu-header a:hover { color: #ffffff !important; }
+
+/* User Profile Dropdown Styles */
+.mu-dropdown-item {
+  display: block;
+  padding: 10px 16px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.95rem;
+  background: transparent;
+  border: none;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.mu-dropdown-item:hover {
+  background: rgba(255,255,255,0.05);
+  color: var(--fg);
+}
+.mu-dropdown-item:link, .mu-dropdown-item:visited {
+  color: var(--muted);
+  text-decoration: none;
+}
+.mu-logout-dropdown {
+  color: #eb5757;
+}
+.mu-logout-dropdown:hover {
+  background: rgba(235, 87, 87, 0.1);
+  color: #ff6b6b;
+}
