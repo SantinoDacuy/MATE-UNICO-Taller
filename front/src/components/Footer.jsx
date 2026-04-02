@@ -43,8 +43,7 @@ const Footer = () => {
           <h4>Comprar</h4>
           <ul className="mu-links">
             <li><Link to="/productos?cat=mate" style={{ color: '#9fa3a6', textDecoration: 'none' }}>Mates</Link></li>
-            <li><Link to="/productos?cat=bombilla" style={{ color: '#9fa3a6', textDecoration: 'none' }}>Bombillas</Link></li>
-            <li><Link to="/productos?cat=bolsos" style={{ color: '#9fa3a6', textDecoration: 'none' }}>Bolsos</Link></li>
+            <li><Link to="/productos?f=combo_simple,combo_completo" style={{ color: '#9fa3a6', textDecoration: 'none' }}>Combos</Link></li>
           </ul>
         </div>
 
@@ -53,7 +52,7 @@ const Footer = () => {
           <ul className="mu-links">
             <li><Link to="/faq" style={{ color: '#9fa3a6', textDecoration: 'none' }}>Preguntas frecuentes</Link></li>
             <li><Link to="/envios" style={{ color: '#9fa3a6', textDecoration: 'none' }}>Envíos</Link></li>
-            <li><Link to="/contacto" style={{ color: '#9fa3a6', textDecoration: 'none' }}>Contacto</Link></li>
+            <li><Link to="/quienes-somos" style={{ color: '#9fa3a6', textDecoration: 'none' }}>Quiénes Somos</Link></li>
           </ul>
         </div>
 
