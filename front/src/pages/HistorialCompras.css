@@ -1,0 +1,360 @@
+.historial-page {
+    min-height: calc(100vh - 200px);
+    padding: 60px 20px;
+    background-color: #fcfcfc;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.historial-loading {
+    text-align: center;
+    padding: 100px 20px;
+    font-size: 1.2rem;
+    color: #666;
+}
+
+.historial-container {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.historial-header {
+    margin-bottom: 50px;
+    padding-bottom: 30px;
+    border-bottom: 2px solid #eaeaea;
+}
+
+.historial-header h1 {
+    font-size: 2.4rem;
+    color: #1a1a1a;
+    margin: 15px 0 10px 0;
+    font-weight: 800;
+}
+
+.header-subtitle {
+    font-size: 0.95rem;
+    color: #999;
+    margin: 0;
+}
+
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    color: #666;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.95rem;
+    transition: color 0.2s ease;
+    margin-bottom: 15px;
+}
+
+.back-link:hover {
+    color: #1a1a1a;
+    text-decoration: underline;
+}
+
+.historial-content {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.venta-card {
+    background-color: #fff;
+    border-radius: 12px;
+    border: 1px solid #e8e8e8;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.venta-card:hover {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    border-color: #d0d0d0;
+}
+
+.venta-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-bottom: 1px solid #e8e8e8;
+}
+
+.pedido-info h3 {
+    font-size: 1.1rem;
+    color: #1a1a1a;
+    margin: 0 0 5px 0;
+    font-weight: 700;
+}
+
+.venta-fecha {
+    font-size: 0.85rem;
+    color: #999;
+    margin: 0;
+}
+
+.venta-estado-container {
+    display: flex;
+    align-items: center;
+}
+
+.estado-badge {
+    display: inline-block;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: capitalize;
+    border: none;
+}
+
+.venta-productos {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.producto-item {
+    display: grid;
+    grid-template-columns: 100px 1fr auto;
+    gap: 20px;
+    align-items: flex-start;
+    text-decoration: none;
+    color: inherit;
+    padding: 15px;
+    border-radius: 8px;
+    background-color: #fcfcfc;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.producto-item:hover {
+    background-color: #f0f0f0;
+    transform: translateX(5px);
+}
+
+.producto-imagen-container {
+    width: 100px;
+    height: 100px;
+    background-color: #f5f5f5;
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.producto-imagen {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.producto-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+.producto-info h4 {
+    font-size: 1rem;
+    color: #1a1a1a;
+    margin: 0 0 5px 0;
+    font-weight: 700;
+}
+
+.producto-material {
+    font-size: 0.9rem;
+    color: #666;
+    margin: 0 0 8px 0;
+}
+
+.producto-cantidad {
+    font-size: 0.85rem;
+    color: #999;
+    margin: 0;
+}
+
+.producto-precio {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: flex-start;
+    min-width: 100px;
+    text-align: right;
+}
+
+.producto-precio p {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0;
+}
+
+.sin-detalles {
+    font-size: 0.9rem;
+    color: #999;
+    font-style: italic;
+    text-align: center;
+    padding: 20px;
+    margin: 0;
+}
+
+.venta-footer {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    border-top: 2px solid #e8e8e8;
+    background-color: #f9f9f9;
+}
+
+.total-label {
+    font-size: 0.95rem;
+    color: #666;
+    margin: 0;
+    font-weight: 600;
+}
+
+.total-amount {
+    font-size: 1.4rem;
+    color: #1a1a1a;
+    margin: 0;
+    font-weight: 800;
+}
+
+.historial-empty {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+    background-color: #fff;
+    border-radius: 12px;
+    border: 2px dashed #e8e8e8;
+}
+
+.empty-state-content {
+    text-align: center;
+    padding: 40px;
+}
+
+.empty-icon {
+    font-size: 3rem;
+    margin: 0 0 20px 0;
+}
+
+.empty-message {
+    font-size: 1.1rem;
+    color: #666;
+    margin: 0 0 30px 0;
+    font-weight: 500;
+}
+
+.btn-continue-shopping {
+    display: inline-block;
+    padding: 12px 32px;
+    background-color: #333;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.btn-continue-shopping:hover {
+    background-color: #1a1a1a;
+    transform: scale(1.05);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .historial-page {
+        padding: 40px 15px;
+    }
+
+    .historial-header {
+        margin-bottom: 30px;
+    }
+
+    .historial-header h1 {
+        font-size: 1.8rem;
+    }
+
+    .venta-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .venta-estado-container {
+        width: 100%;
+    }
+
+    .estado-badge {
+        display: inline-block;
+    }
+
+    .producto-item {
+        grid-template-columns: 80px 1fr;
+        gap: 15px;
+    }
+
+    .producto-imagen-container {
+        width: 80px;
+        height: 80px;
+    }
+
+    .producto-precio {
+        grid-column: 1 / -1;
+        align-items: flex-start;
+        padding-top: 10px;
+        border-top: 1px solid #e8e8e8;
+    }
+
+    .venta-footer {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .total-amount {
+        font-size: 1.2rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .historial-page {
+        padding: 30px 10px;
+    }
+
+    .historial-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .venta-header {
+        padding: 15px;
+    }
+
+    .venta-productos,
+    .venta-footer {
+        padding: 15px;
+    }
+
+    .producto-item {
+        grid-template-columns: 70px 1fr;
+        gap: 12px;
+        padding: 12px;
+    }
+
+    .producto-imagen-container {
+        width: 70px;
+        height: 70px;
+    }
+
+    .producto-info h4 {
+        font-size: 0.9rem;
+    }
+}

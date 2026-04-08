@@ -208,6 +208,19 @@ const ProductPage = () => {
       return;
     }
 
+    // Validar disponibilidad de stock
+    const stockDisponible = producto.stock || 0;
+    if (stockDisponible <= 0) {
+      alert("😥 Lo sentimos, este producto está sin stock en este momento.");
+      return;
+    }
+    
+    if (quantity > stockDisponible) {
+      alert(`⚠️ Stock limitado. Solo hay ${stockDisponible} unidades disponibles.`);
+      setQuantity(stockDisponible);
+      return;
+    }
+
     const textoGrabado = (producto.grabado && grabadoConfirmado) ? grabado.trim() : '';
     
     const productoParaCarrito = {
@@ -262,17 +275,59 @@ const ProductPage = () => {
               </button>
             </div>
 
+            {/* STOCK ALERT */}
+            {producto.stock !== undefined && (
+              <>
+                {producto.stock < 3 && producto.stock > 0 && (
+                  <div style={{
+                    backgroundColor: '#fef5f0',
+                    borderLeft: '4px solid #ff9800',
+                    paddingLeft: '16px',
+                    paddingRight: '16px',
+                    paddingTop: '12px',
+                    paddingBottom: '12px',
+                    marginBottom: '20px',
+                    marginTop: '16px',
+                    color: '#ff9800',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    letterSpacing: '0.3px'
+                  }}>
+                    Últimas unidades disponibles ({producto.stock})
+                  </div>
+                )}
+                {producto.stock >= 3 && (
+                  <div style={{
+                    backgroundColor: '#f9f9f9',
+                    borderLeft: '4px solid #999',
+                    paddingLeft: '16px',
+                    paddingRight: '16px',
+                    paddingTop: '12px',
+                    paddingBottom: '12px',
+                    marginBottom: '20px',
+                    marginTop: '16px',
+                    color: '#999',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    letterSpacing: '0.3px'
+                  }}>
+                    {producto.stock} unidades disponibles
+                  </div>
+                )}
+              </>
+            )}
+
             <p className="description">
               {producto.descripcion}
             </p>
 
             <div className="selectors">
               <div className="selector-group">
-                <label>Cantidad</label>
+                <label>Cantidad {producto.stock !== undefined && producto.stock > 0 && `(Disponibles: ${producto.stock})`}</label>
                 <div className="qty-input">
                   <button onClick={() => setQuantity(Math.max(1, quantity - 1))}>-</button>
                   <span>{quantity}</span>
-                  <button onClick={() => setQuantity(quantity + 1)}>+</button>
+                  <button onClick={() => setQuantity(Math.min(quantity + 1, producto.stock || 1))}>+</button>
                 </div>
               </div>
               
@@ -377,8 +432,19 @@ const ProductPage = () => {
               </div>
             )}
 
-            <button className="btn-primary-block" onClick={handleAddToCart}>
-              Añadir al carrito - ${precioTotal.toLocaleString('es-AR')}
+            <button 
+              className="btn-primary-block" 
+              onClick={handleAddToCart}
+              disabled={(producto?.stock ?? 0) <= 0}
+              style={{
+                opacity: (producto?.stock ?? 0) <= 0 ? '0.6' : '1',
+                cursor: (producto?.stock ?? 0) <= 0 ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {(producto?.stock ?? 0) <= 0 
+                ? 'Sin Stock' 
+                : `Añadir al carrito - $${precioTotal.toLocaleString('es-AR')}`
+              }
             </button>
           </div>
         </section>

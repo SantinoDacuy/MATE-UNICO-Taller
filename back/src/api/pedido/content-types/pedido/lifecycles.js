@@ -7,26 +7,33 @@ module.exports = {
   }
 };
 
-async function syncToBackend(result) {
-  // Solo sincronizar si hay un id de postgres asociado
-  if (result && result.id_venta) {
-    try {
+async function syncToBackend(eventResult) {
+  try {
+    // Strapi 4 en "afterUpdate" a veces no devuelve todos los campos
+    // Nos aseguramos obteniendo la entidad completa directo desde la BD de Strapi
+    const fullRecord = await strapi.entityService.findOne('api::pedido.pedido', eventResult.id);
+
+    // Solo sincronizar si hay un id_venta de postgres asociado
+    if (fullRecord && fullRecord.id_venta) {
       const resp = await fetch('http://127.0.0.1:3001/api/sync-estado-venta', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id_venta: result.id_venta,
-          estado_venta: result.estado_venta,
-          estado_envio: result.estado_envio
+          id_venta: fullRecord.id_venta,
+          estado_venta: fullRecord.estado_venta,
+          estado_envio: fullRecord.estado_envio
         })
       });
+
       if (!resp.ok) {
         strapi.log.error(`Backend Postgres rechazó el sync: ${await resp.text()}`);
       } else {
-        strapi.log.info(`Sincronización hacia backend completada para id_venta: ${result.id_venta}`);
+        strapi.log.info(`Sync OK: Venta PG ${fullRecord.id_venta} actualizada al estado: ${fullRecord.estado_venta}`);
       }
-    } catch (err) {
-      strapi.log.error(`Fallo al sincronizar con el backend de postgres: ${err.message}`);
+    } else {
+      strapi.log.warn(`No sync: No hay id_venta asociado para pedido ID ${eventResult.id}`);
     }
+  } catch (err) {
+    strapi.log.error(`Fallo crítico al sincronizar con postgres: ${err.message}`);
   }
 }

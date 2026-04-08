@@ -32,9 +32,13 @@ export const CartProvider = ({ children }) => {
 
       if (itemIndex !== -1) {
         const newCart = [...prevCart];
+        const stockDisponible = producto.stock || 0;
+        const cantidadTotal = newCart[itemIndex].cantidad + cantidad;
+        const cantidadFinal = Math.min(cantidadTotal, Math.max(0, stockDisponible));
         newCart[itemIndex] = { 
           ...newCart[itemIndex], 
-          cantidad: newCart[itemIndex].cantidad + cantidad 
+          cantidad: cantidadFinal,
+          stock: producto.stock || 0
         };
         return newCart;
       } else {
@@ -48,7 +52,8 @@ export const CartProvider = ({ children }) => {
             imagen: producto.imagenes?.length > 0 ? producto.imagenes[0].url : null,
             cantidad: cantidad,
             color: color,
-            grabado: grabado || 'Sin grabado'
+            grabado: grabado || 'Sin grabado',
+            stock: producto.stock || 0
           }
         ];
       }

@@ -537,10 +537,8 @@ app.post('/api/create_preference', async (req, res) => {
         );
 
         const ventaId = ventaRes.rows[0].id;
-        
-        if (checkoutData.id_cupon) {
-            await client.query('UPDATE Cupon SET usado = true WHERE id = $1', [checkoutData.id_cupon]);
-        }
+        // NOTA: No invalidamos el cupón aquí porque el usuario podría cancelar el pago en MP y perdería el cupón.
+        // Se invalidará en el webhook cuando MP lo reporte como "approved".
 
         // 3. Insertar en detalle_venta
         for (const item of resolvedCart) {
@@ -552,6 +550,17 @@ app.post('/api/create_preference', async (req, res) => {
                 [ventaId, item.prodId || null, item.comboId || null, item.cantidad, item.precio, subtotalItem, subtotalItem]
             );
         }
+
+        // 4. Crear fila en tabla Envio para rastreo
+        let metodoEnvioValido = checkoutData.metodoEnvio;
+        if (!['Correo Argentino', 'Andreani', 'OCA'].includes(metodoEnvioValido)) {
+            metodoEnvioValido = 'OCA'; // Fallback seguro para dominio en PG
+        }
+        await client.query(
+            `INSERT INTO Envio (empresa_envio, costo_envio, estado, id_venta)
+             VALUES ($1, $2, 'Preparando', $3)`,
+            [metodoEnvioValido, 0, ventaId]
+        );
 
         await client.query('COMMIT');
         console.log("✅ Venta guardada temporalmente (Pendiente MP). ID:", ventaId);
@@ -775,9 +784,13 @@ app.get('/api/checkout/success', async (req, res) => {
             const paymentInfo = await paymentClient.get({ id: paymentId });
             
             if (paymentInfo.status === 'approved') {
-                await db.query("UPDATE venta SET estado = 'Aprobado' WHERE id = $1", [externalRef]);
+                const { rows } = await db.query("UPDATE venta SET estado = 'Confirmado' WHERE id = $1 RETURNING id_cupon", [externalRef]);
+                if (rows.length > 0 && rows[0].id_cupon) {
+                    await db.query("UPDATE Cupon SET usado = true, activo = false WHERE id = $1", [rows[0].id_cupon]);
+                }
+                
                 await updateStrapiEstado(externalRef, 'Aprobado');
-                console.log(`✅ Pago verificado y aprobado. Venta ID: ${externalRef}`);
+                console.log(`✅ Pago verificado y aprobado. Venta ID: ${externalRef} - Cupón descontado si aplica.`);
             } else {
                 console.log(`⚠️ MP dice que no está aprobado. Estado real: ${paymentInfo.status}`);
             }
@@ -819,9 +832,12 @@ app.post('/api/webhook_mp', async (req, res) => {
             if (paymentInfo.status === 'approved') {
                 const ventaId = paymentInfo.external_reference;
                 if (ventaId) {
-                    await db.query("UPDATE venta SET estado = 'Aprobado' WHERE id = $1", [ventaId]);
+                    const { rows } = await db.query("UPDATE venta SET estado = 'Confirmado' WHERE id = $1 RETURNING id_cupon", [ventaId]);
+                    if (rows.length > 0 && rows[0].id_cupon) {
+                        await db.query("UPDATE Cupon SET usado = true, activo = false WHERE id = $1", [rows[0].id_cupon]);
+                    }
                     await updateStrapiEstado(ventaId, 'Aprobado');
-                    console.log(`✅ Pago aprobado en MP para la venta ID: ${ventaId}`);
+                    console.log(`✅ Webhook MP: Pago aprobado para la venta ID: ${ventaId} - Cupón desactivado si aplica.`);
                 }
             }
         } catch (error) {
@@ -835,15 +851,24 @@ app.post('/api/webhook_mp', async (req, res) => {
 // Sync DE Strapi A Backend
 app.post('/api/sync-estado-venta', async (req, res) => {
     try {
-        const { id_venta, estado_venta } = req.body;
+        const { id_venta, estado_venta, estado_envio } = req.body;
         if (!id_venta) return res.status(400).json({ error: 'Falta id_venta' });
 
-        // Actualizamos postgres
-        await db.query(
-            "UPDATE venta SET estado = $1 WHERE id = $2", 
-            [estado_venta, id_venta]
-        );
-        console.log(`🔄 Sync desde Strapi completado (Venta ${id_venta} -> Venta: ${estado_venta})`);
+        if (estado_venta) {
+            const pgEstado = estado_venta === 'Aprobado' ? 'Confirmado' : estado_venta;
+            await db.query("UPDATE venta SET estado = $1 WHERE id = $2", [pgEstado, id_venta]);
+            console.log(`🔄 Sync desde Strapi: Venta ${id_venta} -> Pago: ${pgEstado}`);
+        }
+
+        if (estado_envio) {
+            // Mapeo seguro para el dominio estado_e en PostgreSQL
+            let pgEnvio = estado_envio;
+            if (estado_envio === 'Pendiente de envío') pgEnvio = 'Preparando';
+            
+            await db.query("UPDATE Envio SET estado = $1 WHERE id_venta = $2", [pgEnvio, id_venta]);
+            console.log(`🔄 Sync desde Strapi: Venta ${id_venta} -> Envio: ${pgEnvio}`);
+        }
+
         res.json({ success: true });
     } catch (err) {
         console.error("Error sync-estado-venta:", err.message);

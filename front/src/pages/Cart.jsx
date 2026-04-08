@@ -27,7 +27,15 @@ const Carrito = () => {
 
   const handleCambioCantidad = (producto, delta) => {
     if (producto.cantidad === 1 && delta === -1) return;
-    addToCart(producto, delta, producto.color, producto.grabado);
+    
+    // Validar que no supere el stock disponible
+    const stockDisponible = producto.stock || 999; // Si no tiene stock info, permitir
+    const nuevaCantidad = Math.min(producto.cantidad + delta, stockDisponible);
+    
+    if (nuevaCantidad <= 0) return;
+    
+    const diferencia = nuevaCantidad - producto.cantidad;
+    addToCart(producto, diferencia, producto.color, producto.grabado);
     showToast('Cantidad actualizada');
   };
 

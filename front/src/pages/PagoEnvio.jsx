@@ -42,6 +42,14 @@ const PagoEnvio = () => {
       return;
     }
     setError('');
+    
+    // Obtenemos los datos actuales de la sesión (nombre, direccion, cupon...)
+    const checkoutData = JSON.parse(sessionStorage.getItem('checkout_data') || '{}');
+    // Le agregamos la información nueva del envío
+    checkoutData.metodoEnvio = metodoActual.name;
+    checkoutData.totalFinal = total;
+    sessionStorage.setItem('checkout_data', JSON.stringify(checkoutData));
+
     navigate('/pago-tarjeta'); 
   };
 

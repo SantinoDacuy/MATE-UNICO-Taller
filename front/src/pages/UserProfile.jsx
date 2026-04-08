@@ -140,20 +140,51 @@ export default function UserProfile() {
                     <section className="history-section">
                         <h3>Historial de compra</h3>
                         {ventas.length > 0 ? (
-                            ventas.map((v) => (
-                                <div key={v.id} className="order-item">
-                                    <p><strong>Pedido #{v.id}</strong> - {v.estado}</p>
-                                    <div className="order-details">
-                                        {v.detalle?.map((d, i) => (
-                                            <Link key={i} to={`/producto/${d.id_producto}`} className="order-product-link" style={{ display: 'block', fontSize: '13px', color: '#555', marginTop: '5px' }}>
-                                                • {d.producto?.material || 'Producto'} ({d.cantidad} u.) - Ver mate
-                                            </Link>
-                                        ))}
+                            <>
+                                {ventas.slice(0, 3).map((v) => (
+                                    <div 
+                                        key={v.id} 
+                                        className="order-item"
+                                        onClick={() => navigate(`/historial-compras?ventaId=${v.id}`)}
+                                        style={{ cursor: 'pointer', transition: 'background-color 0.2s ease' }}
+                                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9f9f9'}
+                                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                    >
+                                        <p><strong>Pedido #{v.id}</strong> - {v.estado}</p>
+                                        <div className="order-details">
+                                            {v.detalle?.map((d, i) => (
+                                                <span 
+                                                    key={i} 
+                                                    className="order-product-link" 
+                                                    style={{ display: 'block', fontSize: '13px', color: '#555', marginTop: '5px' }}
+                                                >
+                                                    • {d.producto?.material || 'Producto'} ({d.cantidad} u.)
+                                                </span>
+                                            ))}
+                                        </div>
+                                        <p style={{ marginTop: '5px' }}>Total: ${Number(v.total).toLocaleString('es-AR')}</p>
+                                        <hr className="sub-divider" />
                                     </div>
-                                    <p style={{ marginTop: '5px' }}>Total: ${Number(v.total).toLocaleString('es-AR')}</p>
-                                    <hr className="sub-divider" />
-                                </div>
-                            ))
+                                ))}
+                                {ventas.length > 3 && (
+                                    <button 
+                                        className="btn-ver-mas-historial" 
+                                        onClick={() => navigate('/historial-compras')}
+                                        style={{ width: '100%', padding: '8px', marginTop: '10px', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                                    >
+                                        Ver más ({ventas.length - 3})
+                                    </button>
+                                )}
+                                {ventas.length > 0 && ventas.length <= 3 && (
+                                    <button 
+                                        className="btn-ver-mas-historial" 
+                                        onClick={() => navigate('/historial-compras')}
+                                        style={{ width: '100%', padding: '8px', marginTop: '10px', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                                    >
+                                        Ver historial completo
+                                    </button>
+                                )}
+                            </>
                         ) : <p className="empty-state">No hay compras aún.</p>}
                     </section>
                     <section className="favorites-section">

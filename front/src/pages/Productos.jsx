@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { CartContext } from '../context/CartContext';
+import ProductCard from '../components/ProductCard';
 import './Productos.css';
 
 import imagenComodin from '../assets/camionero1.png';
@@ -258,18 +259,7 @@ const Productos = () => {
           ) : (
             <div className="grid-productos">
               {productosFiltrados.map((prod) => (
-                <Link to={`/producto/${prod.documentId}`} key={prod.id} className="card-producto">
-                  <div className="card-img-wrapper">
-                    <img 
-                      src={prod.imagenes && prod.imagenes.length > 0 ? `http://localhost:1337${prod.imagenes[0].url}` : imagenComodin} 
-                      alt={prod.nombre} 
-                    />
-                  </div>
-                  <div className="card-info">
-                    <h3>{prod.nombre}</h3>
-                    <span className="card-precio">${prod.precio.toLocaleString('es-AR')}</span>
-                  </div>
-                </Link>
+                <ProductCard key={prod.id} producto={prod} />
               ))}
             </div>
           )}
