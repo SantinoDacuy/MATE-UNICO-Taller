@@ -15,6 +15,10 @@ import PagoEnvio from './pages/PagoEnvio';
 import PagoTarjeta from './pages/Pago-tarjeta';
 import Final from './pages/Final';
 import Login from './pages/HomePage';
+import Favoritos from './pages/Favoritos';
+import FAQ from './pages/FAQ';
+import Envios from './pages/Envios';
+import QuienesSomos from './pages/QuienesSomos';
 
 const Layout = () => {
   const location = useLocation();
@@ -35,6 +39,10 @@ const Layout = () => {
         <Route path="/pago-envio" element={<PagoEnvio />} />
         <Route path="/pago-tarjeta" element={<PagoTarjeta />} />
         <Route path="/final" element={<Final />} />
+        <Route path="/favoritos" element={<Favoritos />} />
+        <Route path="/faq" element={<FAQ />} />
+        <Route path="/envios" element={<Envios />} />
+        <Route path="/quienes-somos" element={<QuienesSomos />} />
       </Routes>
       {!hideHeaderFooter && <Footer />}
     </>

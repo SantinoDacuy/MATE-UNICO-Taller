@@ -99,10 +99,10 @@
 }
 
 .product-title-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start; /* Alinea el corazón arriba para que no estorbe si hay varias líneas */
-  gap: 24px; /* Un gap grande forzará al título a "bajar" a la siguiente línea mucho antes de chocar */
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center; 
+  gap: 25px; 
   margin-bottom: 20px;
 }
 
@@ -110,8 +110,7 @@
   margin: 0;
   font-size: 2rem;
   line-height: 1.3;
-  flex: 1; /* Ocupa el espacio disponible en la izquierda */
-  word-wrap: break-word; /* Envuelve el texto a la siguiente línea */
+  word-break: break-word;
 }
 
 .wishlist-btn {

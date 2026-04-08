@@ -66,6 +66,11 @@ export default function UserProfile() {
                             ciudad: data.user.ciudad || '',
                             picture: data.user.picture || ''
                         });
+                        
+                        // Solo confiamos en la base de datos para no resucitar favoritos borrados
+                        data.user.favoritos = data.user.favoritos || [];
+                        setUser(data.user);
+
                     } else {
                         navigate('/login');
                     }
@@ -98,8 +103,20 @@ export default function UserProfile() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(form)
             });
-            if (res.ok) alert('¡Información actualizada! 🧉');
-        } catch (err) { alert('Error al guardar'); }
+            if (res.ok) {
+                alert('¡Información actualizada correctamente! 🧉');
+            } else {
+                const errorData = await res.json().catch(() => ({}));
+                if (res.status === 401) {
+                    alert('Error 401: Tu sesión no ha vinculado con la base de datos. Por favor, cierra sesión y vuelve a entrar.');
+                } else {
+                    alert(`Error ${res.status} al guardar: ${errorData.error || 'Error desconocido'}`);
+                }
+            }
+        } catch (err) { 
+            console.error('Error saving profile:', err);
+            alert('Error crítico de red al guardar. Verifica que el servidor (puerto 3001) esté corriendo.'); 
+        }
     }
 
     if (loading) return <div style={{ textAlign: 'center', padding: '50px' }}>Cargando...</div>;
@@ -140,14 +157,42 @@ export default function UserProfile() {
                         ) : <p className="empty-state">No hay compras aún.</p>}
                     </section>
                     <section className="favorites-section">
-                        <h3>Favoritos</h3>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h3>Favoritos</h3>
+                        </div>
                         {user?.favoritos?.length > 0 ? (
-                            user.favoritos.map((fav, i) => (
-                                <div key={i} className="favorite-card">
-                                    <h4>{fav.nombre}</h4>
-                                    <p>{fav.color}</p>
-                                </div>
-                            ))
+                            <>
+                                {user.favoritos.slice(-3).reverse().map((fav, i) => (
+                                    <Link 
+                                        key={i} 
+                                        to={`/producto/${fav.id}`} 
+                                        style={{ textDecoration: 'none', color: 'inherit' }}
+                                    >
+                                        <div className="favorite-card" style={{ cursor: 'pointer' }}>
+                                            <h4>{fav.nombre}</h4>
+                                            <p>{fav.color}</p>
+                                        </div>
+                                    </Link>
+                                ))}
+                                {user.favoritos.length > 3 && (
+                                    <button 
+                                        className="btn-ver-mas-favs" 
+                                        onClick={() => navigate('/favoritos')}
+                                        style={{ width: '100%', padding: '8px', marginTop: '10px', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                                    >
+                                        Ver más ({user.favoritos.length - 3})
+                                    </button>
+                                )}
+                                {user.favoritos.length > 0 && user.favoritos.length <= 3 && (
+                                    <button 
+                                        className="btn-ver-mas-favs" 
+                                        onClick={() => navigate('/favoritos')}
+                                        style={{ width: '100%', padding: '8px', marginTop: '10px', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                                    >
+                                        Ver favoritos
+                                    </button>
+                                )}
+                            </>
                         ) : <p style={{ fontSize: '14px', color: '#666' }}>No tenés favoritos guardados.</p>}
                     </section>
                 </aside>

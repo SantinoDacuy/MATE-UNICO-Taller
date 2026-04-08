@@ -79,26 +79,34 @@ const Productos = () => {
 
         if (coloresActivos.length > 0) {
           pasaColor = coloresActivos.some(color => {
-            if (color === 'negro') return prod.color_negro === true;
-            if (color === 'marron') return prod.color_marron === true;
-            if (color === 'blanco') return prod.color_blanco === true;
-            if (color === 'gris') return prod.color_gris === true;
+            // Comprobación flexible (true, truthy o cadena)
+            if (color === 'negro') return !!prod.color_negro;
+            if (color === 'marron') return !!prod.color_marron;
+            if (color === 'blanco') return !!prod.color_blanco;
+            if (color === 'gris') return !!prod.color_gris;
             return false;
           });
         }
 
         if (matesActivos.length > 0) {
           pasaMate = matesActivos.some(filtro => {
-            if (filtro === 'calabaza-imperial') return prod.material === 'calabaza' && prod.modelo === 'imperial';
-            if (filtro === 'calabaza-torpedo') return prod.material === 'calabaza' && prod.modelo === 'torpedo';
-            if (filtro === 'calabaza-camionero') return prod.material === 'calabaza' && prod.modelo === 'camionero';
+            const mat = (prod.material || '').toLowerCase();
+            const mod = (prod.modelo || '').toLowerCase();
+            const nom = (prod.nombre || '').toLowerCase();
             
-            if (filtro === 'madera-imperial') return prod.material === 'madera' && prod.modelo === 'imperial';
-            if (filtro === 'madera-torpedo') return prod.material === 'madera' && prod.modelo === 'torpedo';
-            if (filtro === 'madera-camionero') return prod.material === 'madera' && prod.modelo === 'camionero';
+            // Función auxiliar para saber si es un modelo en cuestión
+            const esModelo = (m) => mod.includes(m) || nom.includes(m);
+
+            if (filtro === 'calabaza-imperial') return mat === 'calabaza' && esModelo('imperial');
+            if (filtro === 'calabaza-torpedo') return mat === 'calabaza' && esModelo('torpedo');
+            if (filtro === 'calabaza-camionero') return mat === 'calabaza' && esModelo('camionero');
             
-            if (filtro === 'metal') return prod.material === 'metal';
-            if (filtro === 'vidrio') return prod.material === 'vidrio';
+            if (filtro === 'madera-imperial') return mat === 'madera' && esModelo('imperial');
+            if (filtro === 'madera-torpedo') return mat === 'madera' && esModelo('torpedo');
+            if (filtro === 'madera-camionero') return mat === 'madera' && esModelo('camionero');
+            
+            if (filtro === 'metal') return mat === 'metal' || nom.includes('acero') || nom.includes('metal') || nom.includes('térmico');
+            if (filtro === 'vidrio') return mat === 'vidrio' || nom.includes('vidrio');
             return false;
           });
         }
@@ -110,10 +118,8 @@ const Productos = () => {
             if (filtro === 'combo_completo') return prod.categoria === 'combo_completo';
             return false;
           });
-        } else if (matesActivos.length > 0) {
-          // Si eligió un tipo de mate pero NO eligió combo, ocultamos los combos obligatoriamente
-          pasaCombo = prod.categoria !== 'combo_simple' && prod.categoria !== 'combo_completo';
         }
+        // Eliminada la condición 'else if (matesActivos.length > 0)' que ocultaba los combos por error.
 
         // Tiene que pasar todas las pruebas activas
         return pasaColor && pasaMate && pasaCombo;

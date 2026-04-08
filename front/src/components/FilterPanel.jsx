@@ -16,7 +16,7 @@ const FilterPanel = ({ open, onClose, onApply }) => {
   };
 
   return (
-    <div className={`filter-panel ${open ? 'open' : ''}`} aria-hidden={!open}>
+    <div className={`filter-panel ${open ? 'open' : ''}`}>
       <button className="close-btn" onClick={onClose} aria-label="Cerrar filtros">×</button>
       <h2 className="filter-title">Filtrar productos</h2>
 

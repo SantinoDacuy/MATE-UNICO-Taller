@@ -109,12 +109,11 @@ const ProductPage = () => {
         const res = await fetch('http://localhost:3001/api/user/me', { credentials: 'include' });
         if (res.ok) {
           const data = await res.json();
-          if (data && data.loggedIn && data.user) {
+            if (data && data.loggedIn && data.user) {
             setIsUserLoggedIn(true);
             const favsApi = data.user.favoritos || [];
-            if (favsApi.length > 0) {
-              saveFavorites(favsApi); // Refresca caché local
-            }
+            saveFavorites(favsApi); // Sincronizamos siempre, incluso si es vacío, para no resucitar
+            
             isFav = favsApi.some((p) => String(p.id) === currentProductKey || String(p.documentId) === currentProductKey);
           } else {
             setIsUserLoggedIn(false);
@@ -183,7 +182,7 @@ const ProductPage = () => {
       ];
       alert('¡Agregado a favoritos!');
     } else {
-      updated = favoritos.filter((p) => String(p.documentId) !== idCurrent);
+      updated = favoritos.filter((p) => String(p.documentId) !== idCurrent && String(p.id) !== idCurrent);
       alert('Quitado de favoritos');
     }
 

@@ -253,7 +253,7 @@ app.get('/api/user/me/ventas', async (req, res) => {
     try {
         // Get ventas with basic info - NO mostrar compras 'Pendiente' o 'Cancelado'
         const userId = req.session.userId;
-        const ventasQuery = `SELECT id, fecha_venta, subtotal, descuento, total, estado, estado_envio, metodo_pago 
+        const ventasQuery = `SELECT id, fecha_venta, subtotal, descuento, total, estado, metodo_pago 
                              FROM venta 
                              WHERE id_usuario = ${userId} AND estado NOT IN ('Pendiente', 'Cancelado', 'Rechazado')
                              ORDER BY fecha_venta DESC`;
@@ -564,13 +564,13 @@ app.post('/api/create_preference', async (req, res) => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     data: {
-                        id_venta_pg: ventaId,
+                        id_venta: ventaId,
                         cliente_email: req.session.user ? req.session.user.email : 'anonimo',
                         total: totalFinal,
                         estado_venta: 'Pendiente',
                         estado_envio: 'Pendiente de envío',
                         metodo_envio: checkoutData.metodoEnvio || 'N/A',
-                        detalle_productos: detalleCheckout,
+                        detalle_producto: detalleCheckout,
                         publishedAt: new Date().toISOString()
                     }
                 })
@@ -743,7 +743,7 @@ app.post('/api/sync-products', async (req, res) => {
 // Helper genérico para actualizar estado en Strapi post-MP
 async function updateStrapiEstado(ventaId, nuevoEstadoVenta) {
     try {
-        const findReq = await fetch(`http://127.0.0.1:1337/api/pedidos?filters[id_venta_pg][$eq]=${ventaId}`);
+        const findReq = await fetch(`http://127.0.0.1:1337/api/pedidos?filters[id_venta][$eq]=${ventaId}`);
         const findRes = await findReq.json();
         if (findRes.data && findRes.data.length > 0) {
             const documentId = findRes.data[0].documentId;
@@ -754,7 +754,7 @@ async function updateStrapiEstado(ventaId, nuevoEstadoVenta) {
             });
             if (!putReq.ok) console.error("⚠️ Error actualizando Strapi:", await putReq.text());
         } else {
-            console.log(`⚠️ No se encontró pedido en Strapi con id_venta_pg=${ventaId} para actualizar.`);
+            console.log(`⚠️ No se encontró pedido en Strapi con id_venta=${ventaId} para actualizar.`);
         }
     } catch(err) {
         console.error("No se pudo sync Strapi status", err.message);
@@ -835,15 +835,15 @@ app.post('/api/webhook_mp', async (req, res) => {
 // Sync DE Strapi A Backend
 app.post('/api/sync-estado-venta', async (req, res) => {
     try {
-        const { id_venta_pg, estado_venta, estado_envio } = req.body;
-        if (!id_venta_pg) return res.status(400).json({ error: 'Falta id_venta_pg' });
+        const { id_venta, estado_venta } = req.body;
+        if (!id_venta) return res.status(400).json({ error: 'Falta id_venta' });
 
         // Actualizamos postgres
         await db.query(
-            "UPDATE venta SET estado = $1, estado_envio = $2 WHERE id = $3", 
-            [estado_venta, estado_envio, id_venta_pg]
+            "UPDATE venta SET estado = $1 WHERE id = $2", 
+            [estado_venta, id_venta]
         );
-        console.log(`🔄 Sync desde Strapi completado (Venta ${id_venta_pg} -> Venta: ${estado_venta}, Envio: ${estado_envio})`);
+        console.log(`🔄 Sync desde Strapi completado (Venta ${id_venta} -> Venta: ${estado_venta})`);
         res.json({ success: true });
     } catch (err) {
         console.error("Error sync-estado-venta:", err.message);

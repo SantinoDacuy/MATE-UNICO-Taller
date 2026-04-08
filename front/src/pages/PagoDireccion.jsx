@@ -57,6 +57,7 @@ export default function PagoDireccion() {
             setApellido(data.user.apellido || '');
             setDireccion(data.user.calle || '');
             setProvinciaSeleccionada(data.user.provincia || '');
+            setCiudadSeleccionada(data.user.ciudad || '');
           } else { navigate('/login'); }
         } else { navigate('/login'); }
       } catch (error) { navigate('/login'); }

@@ -14,9 +14,8 @@ const HomePage = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-  // --- CONFIGURACIÓN MANUAL DEL CLIENT ID ---
-  // Pegamos el ID directamente acá para asegurar que coincida con el del backend
-  const googleClientId = "931841756818-6rfk9jgaad9rsk44vsnolrtaro93k3qn.apps.googleusercontent.com";;
+    // --- USO DE VARIABLE DE ENTORNO ---
+    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     if (!googleClientId) {
       setError('Error: Google Client ID no configurado');
       setIsLoading(false);
@@ -44,34 +43,39 @@ const HomePage = () => {
           if (res.ok) {
             const data = await res.json();
             if (data && data.success) {
-              // Guardar token en localStorage
               localStorage.setItem('google_token', token);
               navigate('/');
               return;
+            } else {
+              setError(data.error || 'Error en la autenticación del servidor');
             }
+          } else {
+            const errorData = await res.json().catch(() => ({}));
+            setError(`Error del servidor (${res.status}): ${errorData.error || 'Sin respuesta'}`);
           }
         } catch (fetchError) {
-          console.warn('Backend connection failed, proceeding in offline mode');
+          console.error('Fetch error:', fetchError);
+          setError('No se pudo conectar con el servidor de autenticación (puerto 3001)');
         }
-        
-        // Modo fallback: guardar token y continuar
-        localStorage.setItem('google_token', token);
-        navigate('/');
       } catch (err) {
         setError('Error al procesar autenticación');
-        console.error('Error:', err);
+        console.error('Error general login:', err);
       }
     };
 
     const initGoogle = () => {
       if (window.google && window.google.accounts && window.google.accounts.id) {
         try {
-          window.google.accounts.id.initialize({
-            client_id: googleClientId,
-            callback: handleCredentialResponse,
-            auto_select: false,
-            cancel_on_tap_outside: true,
-          });
+          // Prevenir inicializaciones múltiples
+          if (!window._googleAuthInitialized) {
+            window.google.accounts.id.initialize({
+              client_id: googleClientId,
+              callback: handleCredentialResponse,
+              auto_select: false,
+              cancel_on_tap_outside: true,
+            });
+            window._googleAuthInitialized = true;
+          }
 
           const button = document.getElementById('google-signin-button');
           if (button) {
