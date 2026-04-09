@@ -23,7 +23,7 @@ import QuienesSomos from './pages/QuienesSomos';
 
 const Layout = () => {
   const location = useLocation();
-  const hideHeaderFooter = location.pathname === '/login';
+  const hideHeaderFooter = location.pathname === '/login' || location.pathname === '/final';
 
   return (
     <>
