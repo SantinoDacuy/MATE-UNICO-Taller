@@ -51,6 +51,21 @@ export default function UserProfile() {
     useEffect(() => {
         const fetchUserData = async () => {
             try {
+                // Fetch de productos de Strapi para poder pintar las imágenes
+                let strapiProdMap = {};
+                try {
+                    const resProds = await fetch('http://localhost:1337/api/productos?populate=*');
+                    const dataProds = await resProds.json();
+                    if (dataProds?.data) {
+                        dataProds.data.forEach(p => {
+                            strapiProdMap[p.documentId || p.id] = {
+                                nombre: p.nombre,
+                                imageUrl: p.imagenes?.length > 0 ? `http://localhost:1337${p.imagenes[0].url}` : '/assets/default-placeholder.png'
+                            };
+                        });
+                    }
+                } catch(e) { console.error(e) }
+
                 const res = await fetch('http://localhost:3001/api/user/me', { credentials: 'include' });
                 if (res.ok) {
                     const data = await res.json();
@@ -67,7 +82,6 @@ export default function UserProfile() {
                             picture: data.user.picture || ''
                         });
                         
-                        // Solo confiamos en la base de datos para no resucitar favoritos borrados
                         data.user.favoritos = data.user.favoritos || [];
                         setUser(data.user);
 
@@ -82,7 +96,16 @@ export default function UserProfile() {
                 if (vres.ok) {
                     const vdata = await vres.json();
                     if (vdata.success && Array.isArray(vdata.ventas)) {
-                        setVentas(vdata.ventas);
+                        const enriquecidas = vdata.ventas.map(v => ({
+                            ...v,
+                            detalle: v.detalle?.map(d => ({
+                                ...d,
+                                strapiInfo: Object.values(strapiProdMap).find(
+                                    sp => sp.nombre?.toLowerCase() === d.producto_nombre?.toLowerCase()
+                                ) || null
+                            }))
+                        }));
+                        setVentas(enriquecidas);
                     }
                 }
             } catch (e) {
@@ -144,22 +167,31 @@ export default function UserProfile() {
                                 {ventas.slice(0, 3).map((v) => (
                                     <div 
                                         key={v.id} 
-                                        className="order-item"
+                                        className="order-item" 
                                         onClick={() => navigate(`/historial-compras?ventaId=${v.id}`)}
-                                        style={{ cursor: 'pointer', transition: 'background-color 0.2s ease' }}
-                                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9f9f9'}
-                                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                        style={{ cursor: 'pointer' }}
+                                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e8e8e8'}
+                                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ''}
                                     >
                                         <p><strong>Pedido #{v.id}</strong> - {v.estado}</p>
                                         <div className="order-details">
                                             {v.detalle?.map((d, i) => (
-                                                <span 
+                                                <Link 
                                                     key={i} 
-                                                    className="order-product-link" 
-                                                    style={{ display: 'block', fontSize: '13px', color: '#555', marginTop: '5px' }}
+                                                    to={`/producto/${d.id_producto}`}
+                                                    onClick={(e) => e.stopPropagation()} 
+                                                    style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#333', textDecoration: 'none', marginTop: '8px', padding: '5px', borderRadius: '4px' }}
                                                 >
-                                                    • {d.producto?.material || 'Producto'} ({d.cantidad} u.)
-                                                </span>
+                                                    <img 
+                                                        src={d.strapiInfo?.imageUrl || '/assets/default-placeholder.png'} 
+                                                        alt="mate" 
+                                                        style={{ width: '35px', height: '35px', borderRadius: '6px', objectFit: 'cover' }}
+                                                    />
+                                                    <div>
+                                                        <strong>{d.strapiInfo?.nombre || d.producto_nombre || 'Producto'}</strong> <br/>
+                                                        ({d.cantidad} u.)
+                                                    </div>
+                                                </Link>
                                             ))}
                                         </div>
                                         <p style={{ marginTop: '5px' }}>Total: ${Number(v.total).toLocaleString('es-AR')}</p>
@@ -168,7 +200,7 @@ export default function UserProfile() {
                                 ))}
                                 {ventas.length > 3 && (
                                     <button 
-                                        className="btn-ver-mas-historial" 
+                                        className="btn-ver-mas-favs" 
                                         onClick={() => navigate('/historial-compras')}
                                         style={{ width: '100%', padding: '8px', marginTop: '10px', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
                                     >

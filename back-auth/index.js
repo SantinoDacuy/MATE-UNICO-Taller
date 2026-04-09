@@ -251,30 +251,42 @@ app.get('/api/user/me/ventas', async (req, res) => {
     if (req.session && req.session.ventas) return res.json({ success: true, ventas: req.session.ventas });
     if (!req.session || !req.session.userId) return res.status(401).json({ success: false });
     try {
-        // Get ventas with basic info - NO mostrar compras 'Pendiente' o 'Cancelado'
+        // Get ventas with basic info - Mostrar todo excepto 'Pendiente'
         const userId = req.session.userId;
-        const ventasQuery = `SELECT id, fecha_venta, subtotal, descuento, total, estado, metodo_pago 
-                             FROM venta 
-                             WHERE id_usuario = ${userId} AND estado NOT IN ('Pendiente', 'Cancelado', 'Rechazado')
-                             ORDER BY fecha_venta DESC`;
+        const ventasQuery = `SELECT v.id, v.fecha_venta, v.subtotal, v.descuento, v.total, v.estado, v.metodo_pago, e.estado as estado_envio 
+                             FROM venta v
+                             LEFT JOIN Envio e ON v.id = e.id_venta
+                             WHERE v.id_usuario = ${userId} AND BTRIM(LOWER(v.estado)) != 'pendiente'
+                             ORDER BY v.fecha_venta DESC, v.id DESC`;
         const { rows: ventas } = await db.query(ventasQuery);
 
         // For each venta, get its details if they exist
         for (let venta of ventas) {
             try {
-                const detallesQuery = `SELECT dv.id_producto, dv.cantidad, dv.precio_unitario, dv.subtotal
+                const detallesQuery = `
+                    SELECT 
+                        dv.id_producto, 
+                        dv.cantidad, 
+                        dv.precio_unitario, 
+                        dv.subtotal, 
+                        COALESCE(p.descripcion, c.descripcion) as producto_nombre,
+                        COALESCE(p.material, 'Combo') as material
                     FROM detalle_venta dv
+                    LEFT JOIN Producto p ON dv.id_producto = p.id
+                    LEFT JOIN Combo c ON dv.id_combo = c.id
                     WHERE dv.id_venta = ${venta.id}`;
                 const { rows: detalles } = await db.query(detallesQuery);
 
                 // Format details for frontend
                 venta.detalle = detalles.map(d => ({
                     cantidad: d.cantidad,
+                    precio: d.precio_unitario,
                     precio_unitario: d.precio_unitario,
                     subtotal: d.subtotal,
-                    id_producto: d.id_producto,
+                    id_producto: d.id_producto, 
+                    producto_nombre: d.producto_nombre,
                     producto: {
-                        material: 'Producto'
+                        material: d.material
                     }
                 }));
             } catch (detailErr) {
