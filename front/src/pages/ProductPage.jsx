@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom'; 
 import { Heart } from 'lucide-react';
-import { CartContext } from '../context/CartContext'; 
+import { CartContext } from '../context/CartContext';
+import ReviewsSection from '../components/ReviewsSection';
 import './ProductPage.css';
 
 import camionero1 from '../assets/camionero1.png'; 
@@ -450,7 +451,7 @@ const ProductPage = () => {
         </section>
 
         <section className="reviews-section">
-          <h2>Opiniones</h2>
+          <ReviewsSection productId={id} productType="producto" />
         </section>
 
         <section className="similar-products">

@@ -242,6 +242,248 @@ app.post('/api/user/favoritos', async (req, res) => {
 
 /*
 =================================================
+SISTEMA DE RESEÑAS Y OPINIONES
+=================================================
+*/
+
+// 1. Verificar si el usuario puede dejar reseña (compró el producto)
+// Función auxiliar para mapear documentId de Strapi a id_producto de PostgreSQL
+const getProductIdFromDocumentId = async (documentId) => {
+    try {
+        // Primero, intentar como número directo (compatibilidad)
+        const numId = parseInt(documentId, 10);
+        if (!isNaN(numId)) {
+            let result = await db.query(
+                `SELECT id FROM "Producto" WHERE id = $1 LIMIT 1`,
+                [numId]
+            );
+            if (result.rows.length > 0) {
+                console.log(`✓ Producto encontrado por ID directo: ${numId}`);
+                return numId;
+            }
+        }
+        
+        // Buscar en strapi_producto_map usando strapi_document_id
+        let result = await db.query(
+            `SELECT producto_id FROM strapi_producto_map WHERE strapi_document_id = $1 LIMIT 1`,
+            [documentId]
+        );
+        
+        if (result.rows.length > 0 && result.rows[0].producto_id) {
+            console.log(`✓ Producto encontrado vía strapi_producto_map: ${result.rows[0].producto_id}`);
+            return result.rows[0].producto_id;
+        }
+        
+        console.warn(`⚠️ No se encontró Producto para documentId: ${documentId}`);
+        return null;
+    } catch (err) {
+        console.error('Error mapeando documentId:', err);
+        return null;
+    }
+};
+
+app.get('/api/reviews/can-review', async (req, res) => {
+    if (!req.session || !req.session.userId) return res.status(401).json({ canReview: false });
+
+    const { productId, productType } = req.query;
+    const userId = req.session.userId;
+
+    try {
+        // Mapear documentId a id_producto
+        const dbProductId = productType === 'combo' ? productId : await getProductIdFromDocumentId(productId);
+        
+        if (!dbProductId) {
+            return res.json({ canReview: false, message: '⚠️ Producto no encontrado.' });
+        }
+
+        // Buscar si el usuario compró este producto (y el pedido no está en 'Pendiente')
+        let query;
+        if (productType === 'combo') {
+            query = `
+                SELECT COUNT(*) as count
+                FROM venta v
+                JOIN detalle_venta dv ON v.id = dv.id_venta
+                WHERE v.id_usuario = $1 
+                AND dv.id_combo = $2
+                AND BTRIM(LOWER(v.estado)) != 'pendiente'`;
+        } else {
+            query = `
+                SELECT COUNT(*) as count
+                FROM venta v
+                JOIN detalle_venta dv ON v.id = dv.id_venta
+                WHERE v.id_usuario = $1 
+                AND dv.id_producto = $2
+                AND BTRIM(LOWER(v.estado)) != 'pendiente'`;
+        }
+
+        const { rows: purchaseCheck } = await db.query(query, [userId, dbProductId]);
+        const hasPurchased = purchaseCheck[0].count > 0;
+
+        if (!hasPurchased) {
+            return res.json({ canReview: false, message: '🔒 Debes comprar este producto para dejar una opinión.' });
+        }
+
+        // Verificar si ya dejó reseña
+        let reviewCheck;
+        if (productType === 'combo') {
+            reviewCheck = await db.query(
+                `SELECT id FROM reseña WHERE id_usuario = $1 AND id_combo = $2`,
+                [userId, dbProductId]
+            );
+        } else {
+            reviewCheck = await db.query(
+                `SELECT id FROM reseña WHERE id_usuario = $1 AND id_producto = $2`,
+                [userId, dbProductId]
+            );
+        }
+
+        if (reviewCheck.rows.length > 0) {
+            return res.json({ canReview: false, message: '✓ Ya dejaste una opinión en este producto.' });
+        }
+
+        res.locals.dbProductId = dbProductId;
+        return res.json({ canReview: true });
+    } catch (err) {
+        console.error('Error verificando permisos de reseña:', err);
+        return res.status(500).json({ canReview: false, error: 'Error del servidor' });
+    }
+});
+
+// 2. Obtener reseñas de un producto
+app.get('/api/reviews', async (req, res) => {
+    const { productId, productType } = req.query;
+
+    try {
+        // Mapear documentId a id_producto
+        const dbProductId = productType === 'combo' ? productId : await getProductIdFromDocumentId(productId);
+        
+        if (!dbProductId) {
+            return res.json({ success: true, reviews: [], averageRating: 0 });
+        }
+
+        let query, params;
+
+        if (productType === 'combo') {
+            query = `
+                SELECT r.id, r.titulo, r.contenido, r.calificacion, r.fecha_creacion, u.nombre as usuario_nombre
+                FROM reseña r
+                JOIN Usuario u ON r.id_usuario = u.id
+                WHERE r.id_combo = $1
+                ORDER BY r.fecha_creacion DESC`;
+            params = [dbProductId];
+        } else {
+            query = `
+                SELECT r.id, r.titulo, r.contenido, r.calificacion, r.fecha_creacion, u.nombre as usuario_nombre
+                FROM reseña r
+                JOIN Usuario u ON r.id_usuario = u.id
+                WHERE r.id_producto = $1
+                ORDER BY r.fecha_creacion DESC`;
+            params = [dbProductId];
+        }
+
+        const { rows: reviews } = await db.query(query, params);
+
+        // Calcular promedio
+        const averageRating = reviews.length > 0
+            ? reviews.reduce((sum, r) => sum + r.calificacion, 0) / reviews.length
+            : 0;
+
+        return res.json({
+            success: true,
+            reviews: reviews,
+            averageRating: parseFloat(averageRating.toFixed(1))
+        });
+    } catch (err) {
+        console.error('Error obteniendo reseñas:', err);
+        return res.status(500).json({ success: false, reviews: [] });
+    }
+});
+
+// 3. Crear nueva reseña
+app.post('/api/reviews', async (req, res) => {
+    if (!req.session || !req.session.userId) return res.status(401).json({ error: 'No logueado' });
+
+    const { productId, productType, titulo, contenido, calificacion } = req.body;
+    const userId = req.session.userId;
+
+    try {
+        // Validaciones básicas
+        if (!titulo || calificacion < 1 || calificacion > 5) {
+            return res.status(400).json({ error: 'Datos inválidos' });
+        }
+
+        // Mapear documentId a id_producto
+        const dbProductId = productType === 'combo' ? productId : await getProductIdFromDocumentId(productId);
+        
+        if (!dbProductId) {
+            return res.status(400).json({ error: 'Producto no encontrado' });
+        }
+
+        // Verificar que el usuario compró el producto
+        let purchaseQuery;
+        if (productType === 'combo') {
+            purchaseQuery = `
+                SELECT COUNT(*) as count FROM venta v
+                JOIN detalle_venta dv ON v.id = dv.id_venta
+                WHERE v.id_usuario = $1 AND dv.id_combo = $2 AND BTRIM(LOWER(v.estado)) != 'pendiente'`;
+        } else {
+            purchaseQuery = `
+                SELECT COUNT(*) as count FROM venta v
+                JOIN detalle_venta dv ON v.id = dv.id_venta
+                WHERE v.id_usuario = $1 AND dv.id_producto = $2 AND BTRIM(LOWER(v.estado)) != 'pendiente'`;
+        }
+
+        const { rows: purchaseCheck } = await db.query(purchaseQuery, [userId, dbProductId]);
+
+        if (purchaseCheck[0].count === 0) {
+            return res.status(403).json({ error: 'No has comprado este producto' });
+        }
+
+        // Verificar que no haya dejado reseña anterior
+        let existingReviewQuery;
+        if (productType === 'combo') {
+            existingReviewQuery = `SELECT id FROM reseña WHERE id_usuario = $1 AND id_combo = $2`;
+        } else {
+            existingReviewQuery = `SELECT id FROM reseña WHERE id_usuario = $1 AND id_producto = $2`;
+        }
+
+        const { rows: existingReview } = await db.query(existingReviewQuery, [userId, dbProductId]);
+
+        if (existingReview.length > 0) {
+            return res.status(403).json({ error: 'Ya dejaste una reseña en este producto' });
+        }
+
+        // Insertar reseña
+        let insertQuery, insertParams;
+        if (productType === 'combo') {
+            insertQuery = `
+                INSERT INTO reseña (id_usuario, id_combo, titulo, contenido, calificacion, fecha_creacion)
+                VALUES ($1, $2, $3, $4, $5, CURRENT_DATE)
+                RETURNING id`;
+            insertParams = [userId, dbProductId, titulo, contenido, calificacion];
+        } else {
+            insertQuery = `
+                INSERT INTO reseña (id_usuario, id_producto, titulo, contenido, calificacion, fecha_creacion)
+                VALUES ($1, $2, $3, $4, $5, CURRENT_DATE)
+                RETURNING id`;
+            insertParams = [userId, dbProductId, titulo, contenido, calificacion];
+        }
+
+        const { rows: insertResult } = await db.query(insertQuery, insertParams);
+
+        return res.json({
+            success: true,
+            reviewId: insertResult[0].id,
+            message: 'Reseña guardada correctamente'
+        });
+    } catch (err) {
+        console.error('Error creyendo reseña:', err);
+        return res.status(500).json({ error: 'Error del servidor' });
+    }
+});
+
+/*
+=================================================
 RUTA: OBTENER VENTAS DEL USUARIO
 GET /api/user/me/ventas
 =================================================
