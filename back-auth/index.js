@@ -5,6 +5,7 @@ const session = require('express-session');
 const { OAuth2Client } = require('google-auth-library');
 const db = require('./db'); // Importamos nuestra conexión a la BD
 const { MercadoPagoConfig, Preference, Payment } = require('mercadopago');
+const { sendOrderConfirmation } = require('./services/emailService');
 
 const app = express();
 const PORT = 3001; // Puerto para el back-end
@@ -822,31 +823,38 @@ app.post('/api/create_preference', async (req, res) => {
         // --- SINCRONIZAR A STRAPI ---
         try {
             const detalleCheckout = resolvedCart.map(c => `${c.cantidad}x ${c.nombre}`).join(' | ');
+            const payload = {
+                data: {
+                    id_venta: ventaId,
+                    cliente_email: req.session.user ? req.session.user.email : 'anonimo',
+                    total: totalFinal,
+                    estado_venta: 'Pendiente',
+                    estado_envio: 'Pendiente de envío',
+                    metodo_envio: checkoutData.metodoEnvio || 'N/A',
+                    detalle_producto: detalleCheckout
+                }
+            };
+            
+            console.log("📤 Enviando a Strapi:", JSON.stringify(payload, null, 2));
+            
             const resStrapi = await fetch('http://127.0.0.1:1337/api/pedidos', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    data: {
-                        id_venta: ventaId,
-                        cliente_email: req.session.user ? req.session.user.email : 'anonimo',
-                        total: totalFinal,
-                        estado_venta: 'Pendiente',
-                        estado_envio: 'Pendiente de envío',
-                        metodo_envio: checkoutData.metodoEnvio || 'N/A',
-                        detalle_producto: detalleCheckout,
-                        publishedAt: new Date().toISOString()
-                    }
-                })
+                body: JSON.stringify(payload)
             });
             
+            const strapiText = await resStrapi.text();
+            
             if (!resStrapi.ok) {
-                const errText = await resStrapi.text();
-                console.error("⚠️ Strapi rechazó la creación del pedido. Status:", resStrapi.status, "Detalle:", errText);
+                console.error("❌ Strapi ERROR. Status:", resStrapi.status);
+                console.error("Respuesta completa:", strapiText);
             } else {
                 console.log("✅ Venta replicada en Strapi exitosamente");
+                console.log("Respuesta Strapi:", strapiText);
             }
         } catch (syncErr) {
             console.error("⚠️ Error de red mandando a Strapi:", syncErr.message);
+            console.error("Stack:", syncErr.stack);
         }
 
         // 4. Crear Preferencia en Mercado Pago
@@ -1038,13 +1046,48 @@ app.get('/api/checkout/success', async (req, res) => {
             const paymentInfo = await paymentClient.get({ id: paymentId });
             
             if (paymentInfo.status === 'approved') {
-                const { rows } = await db.query("UPDATE venta SET estado = 'Confirmado' WHERE id = $1 RETURNING id_cupon", [externalRef]);
+                const { rows } = await db.query("UPDATE venta SET estado = 'Confirmado' WHERE id = $1 RETURNING id_cupon, id_usuario, total", [externalRef]);
                 if (rows.length > 0 && rows[0].id_cupon) {
                     await db.query("UPDATE Cupon SET usado = true, activo = false WHERE id = $1", [rows[0].id_cupon]);
                 }
                 
                 await updateStrapiEstado(externalRef, 'Aprobado');
                 console.log(`✅ Pago verificado y aprobado. Venta ID: ${externalRef} - Cupón descontado si aplica.`);
+                
+                // Enviar email de confirmación "fire and forget"
+                if (rows.length > 0 && rows[0].id_usuario) {
+                    (async () => {
+                        try {
+                            const idUsuario = rows[0].id_usuario;
+                            const totalVenta = rows[0].total;
+                            
+                            // Obtener información del usuario
+                            const { rows: userRows } = await db.query("SELECT nombre, email FROM Usuario WHERE id = $1", [idUsuario]);
+                            if (userRows.length > 0) {
+                                const userData = userRows[0];
+                                
+                                // Obtener detalles de la orden
+                                const { rows: detailRows } = await db.query(`
+                                    SELECT dv.cantidad, dv.subtotal, COALESCE(p.descripcion, c.descripcion) as nombre
+                                    FROM detalle_venta dv
+                                    LEFT JOIN Producto p ON dv.id_producto = p.id
+                                    LEFT JOIN Combo c ON dv.id_combo = c.id
+                                    WHERE dv.id_venta = $1
+                                `, [externalRef]);
+                                
+                                const orderDetails = {
+                                    id: externalRef,
+                                    total: totalVenta,
+                                    items: detailRows
+                                };
+                                
+                                await sendOrderConfirmation(userData, orderDetails);
+                            }
+                        } catch (emailErr) {
+                            console.error('❌ Error enviando email de confirmación en success:', emailErr);
+                        }
+                    })();
+                }
             } else {
                 console.log(`⚠️ MP dice que no está aprobado. Estado real: ${paymentInfo.status}`);
             }
@@ -1086,12 +1129,48 @@ app.post('/api/webhook_mp', async (req, res) => {
             if (paymentInfo.status === 'approved') {
                 const ventaId = paymentInfo.external_reference;
                 if (ventaId) {
-                    const { rows } = await db.query("UPDATE venta SET estado = 'Confirmado' WHERE id = $1 RETURNING id_cupon", [ventaId]);
+                    const { rows } = await db.query("UPDATE venta SET estado = 'Confirmado' WHERE id = $1 RETURNING id_cupon, id_usuario, total", [ventaId]);
                     if (rows.length > 0 && rows[0].id_cupon) {
                         await db.query("UPDATE Cupon SET usado = true, activo = false WHERE id = $1", [rows[0].id_cupon]);
                     }
                     await updateStrapiEstado(ventaId, 'Aprobado');
                     console.log(`✅ Webhook MP: Pago aprobado para la venta ID: ${ventaId} - Cupón desactivado si aplica.`);
+                    
+                    // Enviar email de confirmación "fire and forget" para no bloquear la respuesta a MP
+                    if (rows.length > 0 && rows[0].id_usuario) {
+                        (async () => {
+                            try {
+                                const idUsuario = rows[0].id_usuario;
+                                const totalVenta = rows[0].total;
+                                
+                                // Obtener información del usuario
+                                const { rows: userRows } = await db.query("SELECT nombre, email FROM Usuario WHERE id = $1", [idUsuario]);
+                                if (userRows.length > 0) {
+                                    const userData = userRows[0];
+                                    
+                                    // Obtener detalles de la orden
+                                    const { rows: detailRows } = await db.query(`
+                                        SELECT dv.cantidad, dv.subtotal, COALESCE(p.descripcion, c.descripcion) as nombre
+                                        FROM detalle_venta dv
+                                        LEFT JOIN Producto p ON dv.id_producto = p.id
+                                        LEFT JOIN Combo c ON dv.id_combo = c.id
+                                        WHERE dv.id_venta = $1
+                                    `, [ventaId]);
+                                    
+                                    const orderDetails = {
+                                        id: ventaId,
+                                        total: totalVenta,
+                                        items: detailRows
+                                    };
+                                    
+                                    // Llamar al servicio sin el await dentro del try-catch de orden superior para que no bloquee
+                                    await sendOrderConfirmation(userData, orderDetails);
+                                }
+                            } catch (emailErr) {
+                                console.error('❌ Error enviando email de confirmación (Fire&Forget):', emailErr);
+                            }
+                        })();
+                    }
                 }
             }
         } catch (error) {
