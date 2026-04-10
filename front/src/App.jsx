@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { CartProvider } from './context/CartContext';
 import Header from './components/Header';
@@ -24,6 +24,32 @@ import QuienesSomos from './pages/QuienesSomos';
 const Layout = () => {
   const location = useLocation();
   const hideHeaderFooter = location.pathname === '/login' || location.pathname === '/final';
+
+  useEffect(() => {
+    const routeTitles = {
+      '/': 'Inicio | Mate Único',
+      '/home': 'Inicio | Mate Único',
+      '/productos': 'Productos | Mate Único',
+      '/login': 'Iniciar Sesión | Mate Único',
+      '/perfil': 'Mi Perfil | Mate Único',
+      '/carrito': 'Mi Carrito | Mate Único',
+      '/direccion-pago': 'Dirección de Envío | Mate Único',
+      '/pago-envio': 'Método de Envío | Mate Único',
+      '/pago-tarjeta': 'Pago | Mate Único',
+      '/final': 'Compra Exitosa | Mate Único',
+      '/favoritos': 'Mis Favoritos | Mate Único',
+      '/historial-compras': 'Mis Compras | Mate Único',
+      '/faq': 'Preguntas Frecuentes | Mate Único',
+      '/envios': 'Envíos | Mate Único',
+      '/quienes-somos': 'Quiénes Somos | Mate Único',
+    };
+
+    if (location.pathname.startsWith('/producto/')) {
+      document.title = 'Producto | Mate Único';
+    } else {
+      document.title = routeTitles[location.pathname] || 'Mate Único';
+    }
+  }, [location]);
 
   return (
     <>
