@@ -249,34 +249,36 @@ SISTEMA DE RESEÑAS Y OPINIONES
 */
 
 // 1. Verificar si el usuario puede dejar reseña (compró el producto)
-// Función auxiliar para mapear documentId de Strapi a id_producto de PostgreSQL
-const getProductIdFromDocumentId = async (documentId) => {
+// Función auxiliar para mapear documentId de Strapi a id_producto/id_combo de PostgreSQL
+const getIdFromDocumentId = async (documentId, isCombo) => {
     try {
         // Primero, intentar como número directo (compatibilidad)
-        const numId = parseInt(documentId, 10);
-        if (!isNaN(numId)) {
+        if (/^\d+$/.test(String(documentId))) {
+            const numId = Number(documentId);
+            const tabla = isCombo ? 'combo' : 'producto';
             let result = await db.query(
-                `SELECT id FROM "Producto" WHERE id = $1 LIMIT 1`,
+                `SELECT id FROM ${tabla} WHERE id = $1 LIMIT 1`,
                 [numId]
             );
             if (result.rows.length > 0) {
-                console.log(`✓ Producto encontrado por ID directo: ${numId}`);
+                console.log(`✓ ${isCombo ? 'Combo' : 'Producto'} encontrado por ID directo: ${numId}`);
                 return numId;
             }
         }
 
         // Buscar en strapi_producto_map usando strapi_document_id
+        const campoId = isCombo ? 'combo_id' : 'producto_id';
         let result = await db.query(
-            `SELECT producto_id FROM strapi_producto_map WHERE strapi_document_id = $1 LIMIT 1`,
+            `SELECT ${campoId} FROM strapi_producto_map WHERE strapi_document_id = $1 LIMIT 1`,
             [documentId]
         );
 
-        if (result.rows.length > 0 && result.rows[0].producto_id) {
-            console.log(`✓ Producto encontrado vía strapi_producto_map: ${result.rows[0].producto_id}`);
-            return result.rows[0].producto_id;
+        if (result.rows.length > 0 && result.rows[0][campoId]) {
+            console.log(`✓ ${isCombo ? 'Combo' : 'Producto'} encontrado vía strapi_producto_map: ${result.rows[0][campoId]}`);
+            return result.rows[0][campoId];
         }
 
-        console.warn(`⚠️ No se encontró Producto para documentId: ${documentId}`);
+        console.warn(`⚠️ No se encontró ${isCombo ? 'Combo' : 'Producto'} para documentId: ${documentId}`);
         return null;
     } catch (err) {
         console.error('Error mapeando documentId:', err);
@@ -291,8 +293,8 @@ app.get('/api/reviews/can-review', async (req, res) => {
     const userId = req.session.userId;
 
     try {
-        // Mapear documentId a id_producto
-        const dbProductId = productType === 'combo' ? productId : await getProductIdFromDocumentId(productId);
+        // Mapear documentId al ID local en PostgreSQL
+        const dbProductId = await getIdFromDocumentId(productId, productType === 'combo');
 
         if (!dbProductId) {
             return res.json({ canReview: false, message: '⚠️ Producto no encontrado.' });
@@ -305,21 +307,23 @@ app.get('/api/reviews/can-review', async (req, res) => {
                 SELECT COUNT(*) as count
                 FROM venta v
                 JOIN detalle_venta dv ON v.id = dv.id_venta
+                JOIN combo c ON dv.id_combo = c.id
                 WHERE v.id_usuario = $1 
-                AND dv.id_combo = $2
+                AND (dv.id_combo = $2 OR LOWER(c.descripcion) = (SELECT LOWER(descripcion) FROM combo WHERE id = $2))
                 AND BTRIM(LOWER(v.estado)) != 'pendiente'`;
         } else {
             query = `
                 SELECT COUNT(*) as count
                 FROM venta v
                 JOIN detalle_venta dv ON v.id = dv.id_venta
+                JOIN producto p ON dv.id_producto = p.id
                 WHERE v.id_usuario = $1 
-                AND dv.id_producto = $2
+                AND (dv.id_producto = $2 OR LOWER(p.descripcion) = (SELECT LOWER(descripcion) FROM producto WHERE id = $2))
                 AND BTRIM(LOWER(v.estado)) != 'pendiente'`;
         }
 
         const { rows: purchaseCheck } = await db.query(query, [userId, dbProductId]);
-        const hasPurchased = purchaseCheck[0].count > 0;
+        const hasPurchased = Number(purchaseCheck[0].count) > 0;
 
         if (!hasPurchased) {
             return res.json({ canReview: false, message: '🔒 Debes comprar este producto para dejar una opinión.' });
@@ -329,12 +333,16 @@ app.get('/api/reviews/can-review', async (req, res) => {
         let reviewCheck;
         if (productType === 'combo') {
             reviewCheck = await db.query(
-                `SELECT id FROM reseña WHERE id_usuario = $1 AND id_combo = $2`,
+                `SELECT r.id FROM reseña r
+                 JOIN combo c ON r.id_combo = c.id
+                 WHERE r.id_usuario = $1 AND (c.id = $2 OR LOWER(c.descripcion) = (SELECT LOWER(descripcion) FROM combo WHERE id = $2))`,
                 [userId, dbProductId]
             );
         } else {
             reviewCheck = await db.query(
-                `SELECT id FROM reseña WHERE id_usuario = $1 AND id_producto = $2`,
+                `SELECT r.id FROM reseña r
+                 JOIN producto p ON r.id_producto = p.id
+                 WHERE r.id_usuario = $1 AND (p.id = $2 OR LOWER(p.descripcion) = (SELECT LOWER(descripcion) FROM producto WHERE id = $2))`,
                 [userId, dbProductId]
             );
         }
@@ -356,8 +364,8 @@ app.get('/api/reviews', async (req, res) => {
     const { productId, productType } = req.query;
 
     try {
-        // Mapear documentId a id_producto
-        const dbProductId = productType === 'combo' ? productId : await getProductIdFromDocumentId(productId);
+        // Mapear documentId al ID local en PostgreSQL
+        const dbProductId = await getIdFromDocumentId(productId, productType === 'combo');
 
         if (!dbProductId) {
             return res.json({ success: true, reviews: [], averageRating: 0 });
@@ -370,7 +378,8 @@ app.get('/api/reviews', async (req, res) => {
                 SELECT r.id, r.titulo, r.contenido, r.calificacion, r.fecha_creacion, u.nombre as usuario_nombre
                 FROM reseña r
                 JOIN Usuario u ON r.id_usuario = u.id
-                WHERE r.id_combo = $1
+                JOIN combo c ON r.id_combo = c.id
+                WHERE c.id = $1 OR LOWER(c.descripcion) = (SELECT LOWER(descripcion) FROM combo WHERE id = $1)
                 ORDER BY r.fecha_creacion DESC`;
             params = [dbProductId];
         } else {
@@ -378,7 +387,8 @@ app.get('/api/reviews', async (req, res) => {
                 SELECT r.id, r.titulo, r.contenido, r.calificacion, r.fecha_creacion, u.nombre as usuario_nombre
                 FROM reseña r
                 JOIN Usuario u ON r.id_usuario = u.id
-                WHERE r.id_producto = $1
+                JOIN producto p ON r.id_producto = p.id
+                WHERE p.id = $1 OR LOWER(p.descripcion) = (SELECT LOWER(descripcion) FROM producto WHERE id = $1)
                 ORDER BY r.fecha_creacion DESC`;
             params = [dbProductId];
         }
@@ -414,8 +424,8 @@ app.post('/api/reviews', async (req, res) => {
             return res.status(400).json({ error: 'Datos inválidos' });
         }
 
-        // Mapear documentId a id_producto
-        const dbProductId = productType === 'combo' ? productId : await getProductIdFromDocumentId(productId);
+        // Mapear documentId al ID local en PostgreSQL
+        const dbProductId = await getIdFromDocumentId(productId, productType === 'combo');
 
         if (!dbProductId) {
             return res.status(400).json({ error: 'Producto no encontrado' });
@@ -427,26 +437,28 @@ app.post('/api/reviews', async (req, res) => {
             purchaseQuery = `
                 SELECT COUNT(*) as count FROM venta v
                 JOIN detalle_venta dv ON v.id = dv.id_venta
-                WHERE v.id_usuario = $1 AND dv.id_combo = $2 AND BTRIM(LOWER(v.estado)) != 'pendiente'`;
+                JOIN combo c ON dv.id_combo = c.id
+                WHERE v.id_usuario = $1 AND (c.id = $2 OR LOWER(c.descripcion) = (SELECT LOWER(descripcion) FROM combo WHERE id = $2)) AND BTRIM(LOWER(v.estado)) != 'pendiente'`;
         } else {
             purchaseQuery = `
                 SELECT COUNT(*) as count FROM venta v
                 JOIN detalle_venta dv ON v.id = dv.id_venta
-                WHERE v.id_usuario = $1 AND dv.id_producto = $2 AND BTRIM(LOWER(v.estado)) != 'pendiente'`;
+                JOIN producto p ON dv.id_producto = p.id
+                WHERE v.id_usuario = $1 AND (p.id = $2 OR LOWER(p.descripcion) = (SELECT LOWER(descripcion) FROM producto WHERE id = $2)) AND BTRIM(LOWER(v.estado)) != 'pendiente'`;
         }
 
         const { rows: purchaseCheck } = await db.query(purchaseQuery, [userId, dbProductId]);
 
-        if (purchaseCheck[0].count === 0) {
+        if (Number(purchaseCheck[0].count) === 0) {
             return res.status(403).json({ error: 'No has comprado este producto' });
         }
 
         // Verificar que no haya dejado reseña anterior
         let existingReviewQuery;
         if (productType === 'combo') {
-            existingReviewQuery = `SELECT id FROM reseña WHERE id_usuario = $1 AND id_combo = $2`;
+            existingReviewQuery = `SELECT r.id FROM reseña r JOIN combo c ON r.id_combo = c.id WHERE r.id_usuario = $1 AND (c.id = $2 OR LOWER(c.descripcion) = (SELECT LOWER(descripcion) FROM combo WHERE id = $2))`;
         } else {
-            existingReviewQuery = `SELECT id FROM reseña WHERE id_usuario = $1 AND id_producto = $2`;
+            existingReviewQuery = `SELECT r.id FROM reseña r JOIN producto p ON r.id_producto = p.id WHERE r.id_usuario = $1 AND (p.id = $2 OR LOWER(p.descripcion) = (SELECT LOWER(descripcion) FROM producto WHERE id = $2))`;
         }
 
         const { rows: existingReview } = await db.query(existingReviewQuery, [userId, dbProductId]);
