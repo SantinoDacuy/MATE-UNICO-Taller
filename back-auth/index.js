@@ -6,6 +6,7 @@ const { OAuth2Client } = require('google-auth-library');
 const db = require('./db'); // Importamos nuestra conexión a la BD
 const { MercadoPagoConfig, Preference, Payment } = require('mercadopago');
 const { sendOrderConfirmation } = require('./services/emailService');
+const { checkStockBeforePayment, deductStockFromStrapi } = require('./services/stockService');
 
 const app = express();
 const PORT = 3001; // Puerto para el back-end
@@ -21,7 +22,7 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'http://localhost:5174';
 const allowedOrigins = FRONTEND_ORIGIN.split(',').map(s => s.trim());
 app.use(cors({
-    origin: function(origin, callback) {
+    origin: function (origin, callback) {
         // allow requests with no origin (like Postman, server-to-server)
         if (!origin) return callback(null, true);
         // allow explicit origins from env
@@ -64,7 +65,7 @@ RUTA REAL: OBTENER TODOS LOS PRODUCTOS
 */
 app.get('/api/productos', async (req, res) => {
     try {
-    // Usamos el 'db' que importamos para hacer una consulta
+        // Usamos el 'db' que importamos para hacer una consulta
         const { rows } = await db.query('SELECT * FROM Producto');
         res.json(rows); // Enviamos los productos como respuesta JSON
     } catch (error) {
@@ -89,49 +90,49 @@ app.post('/auth/google', async (req, res) => {
         const payload = ticket.getPayload();
         console.log('Google payload:', { email: payload.email, sub: payload.sub, name: payload.name });
         // Buscar por email en la tabla Usuario
-                const email = payload.email;
-                const nombre = payload.given_name || 'SinNombre';
-                const apellido = payload.family_name || 'SinApellido';
-                    const foto = payload.picture || null;
+        const email = payload.email;
+        const nombre = payload.given_name || 'SinNombre';
+        const apellido = payload.family_name || 'SinApellido';
+        const foto = payload.picture || null;
 
-                let userId = null;
+        let userId = null;
+        try {
+            const { rows } = await db.query('SELECT id FROM Usuario WHERE email = $1', [email]);
+            if (rows.length > 0) {
+                userId = rows[0].id;
+            } else {
+                const insertQuery = `INSERT INTO Usuario (activo, fecha_registro, telefono, email, apellido, nombre, es_admin) VALUES (true, CURRENT_DATE, NULL, $1, $2, $3, false) RETURNING id`;
+                // Try to insert with foto_url if column exists; if not, fall back
+                let insertRes;
                 try {
-                    const { rows } = await db.query('SELECT id FROM Usuario WHERE email = $1', [email]);
-                    if (rows.length > 0) {
-                        userId = rows[0].id;
-                    } else {
-                        const insertQuery = `INSERT INTO Usuario (activo, fecha_registro, telefono, email, apellido, nombre, es_admin) VALUES (true, CURRENT_DATE, NULL, $1, $2, $3, false) RETURNING id`;
-                                // Try to insert with foto_url if column exists; if not, fall back
-                                let insertRes;
-                                try {
-                                    const insertQuery = `INSERT INTO Usuario (activo, fecha_registro, telefono, email, apellido, nombre, es_admin, foto_url) VALUES (true, CURRENT_DATE, NULL, $1, $2, $3, false, $4) RETURNING id`;
-                                    insertRes = await db.query(insertQuery, [email, apellido, nombre, foto]);
-                                } catch (e) {
-                                    // column foto_url may not exist; try without it
-                                    const insertQuery = `INSERT INTO Usuario (activo, fecha_registro, telefono, email, apellido, nombre, es_admin) VALUES (true, CURRENT_DATE, NULL, $1, $2, $3, false) RETURNING id`;
-                                    insertRes = await db.query(insertQuery, [email, apellido, nombre]);
-                                }
-                        userId = insertRes.rows[0].id;
-                    }
-                } catch (dbError) {
-                    console.error('DB error creating/finding user:', dbError);
-                    
-                    // ¡ELIMINAMOS EL RETURN QUE CORTABA EL CÓDIGO ACÁ!
-                    
-                    // store some profile info in session as fallback
-                    req.session.user = { email: payload.email, nombre, apellido, picture: foto };
-                    
-                    // Y CAMBIAMOS EL STATUS 500 POR UN 200 (json success: true) 
-                    // Para que React sepa que pudimos entrar en modo fallback
-                    return res.json({ success: true, fallback: true, payload });
+                    const insertQuery = `INSERT INTO Usuario (activo, fecha_registro, telefono, email, apellido, nombre, es_admin, foto_url) VALUES (true, CURRENT_DATE, NULL, $1, $2, $3, false, $4) RETURNING id`;
+                    insertRes = await db.query(insertQuery, [email, apellido, nombre, foto]);
+                } catch (e) {
+                    // column foto_url may not exist; try without it
+                    const insertQuery = `INSERT INTO Usuario (activo, fecha_registro, telefono, email, apellido, nombre, es_admin) VALUES (true, CURRENT_DATE, NULL, $1, $2, $3, false) RETURNING id`;
+                    insertRes = await db.query(insertQuery, [email, apellido, nombre]);
                 }
+                userId = insertRes.rows[0].id;
+            }
+        } catch (dbError) {
+            console.error('DB error creating/finding user:', dbError);
 
-                // Guardar userId en la sesión
-                req.session.userId = userId;
-                // also save a minimal user object in session for fallback
-                req.session.user = { id: userId, email, nombre, apellido, picture: foto };
-                console.log('User logged in, id:', userId);
-                return res.json({ success: true, userId, payload });
+            // ¡ELIMINAMOS EL RETURN QUE CORTABA EL CÓDIGO ACÁ!
+
+            // store some profile info in session as fallback
+            req.session.user = { email: payload.email, nombre, apellido, picture: foto };
+
+            // Y CAMBIAMOS EL STATUS 500 POR UN 200 (json success: true) 
+            // Para que React sepa que pudimos entrar en modo fallback
+            return res.json({ success: true, fallback: true, payload });
+        }
+
+        // Guardar userId en la sesión
+        req.session.userId = userId;
+        // also save a minimal user object in session for fallback
+        req.session.user = { id: userId, email, nombre, apellido, picture: foto };
+        console.log('User logged in, id:', userId);
+        return res.json({ success: true, userId, payload });
     } catch (error) {
         console.error('Error verificando ID token:', error);
         return res.status(401).json({ success: false, error: 'Invalid ID token' });
@@ -206,14 +207,14 @@ app.post('/api/user/favoritos', async (req, res) => {
     if (!req.session || !req.session.userId) {
         return res.status(401).json({ success: false, error: 'No logueado' });
     }
-    
+
     const { id, nombre, color } = req.body;
     const userId = req.session.userId;
 
     try {
         // 1. Buscamos los favoritos actuales del usuario
         const { rows } = await db.query('SELECT favoritos_json FROM Usuario WHERE id = $1', [userId]);
-        
+
         // 2. Parseamos el JSON (si está vacío, creamos un array nuevo)
         let favoritos = [];
         try {
@@ -224,7 +225,7 @@ app.post('/api/user/favoritos', async (req, res) => {
 
         // 3. Lógica de Toggle: Si ya está, lo quitamos. Si no está, lo agregamos.
         const index = favoritos.findIndex(f => String(f.id) === String(id));
-        
+
         if (index > -1) {
             favoritos.splice(index, 1); // Quitar de favoritos
         } else {
@@ -233,7 +234,7 @@ app.post('/api/user/favoritos', async (req, res) => {
 
         // 4. Guardamos el nuevo array como JSON en la DB
         await db.query('UPDATE Usuario SET favoritos_json = $1 WHERE id = $2', [JSON.stringify(favoritos), userId]);
-        
+
         return res.json({ success: true, isFavorite: index === -1 });
     } catch (err) {
         console.error('Error en favoritos:', err);
@@ -263,18 +264,18 @@ const getProductIdFromDocumentId = async (documentId) => {
                 return numId;
             }
         }
-        
+
         // Buscar en strapi_producto_map usando strapi_document_id
         let result = await db.query(
             `SELECT producto_id FROM strapi_producto_map WHERE strapi_document_id = $1 LIMIT 1`,
             [documentId]
         );
-        
+
         if (result.rows.length > 0 && result.rows[0].producto_id) {
             console.log(`✓ Producto encontrado vía strapi_producto_map: ${result.rows[0].producto_id}`);
             return result.rows[0].producto_id;
         }
-        
+
         console.warn(`⚠️ No se encontró Producto para documentId: ${documentId}`);
         return null;
     } catch (err) {
@@ -292,51 +293,70 @@ app.get('/api/reviews/can-review', async (req, res) => {
     try {
         // Mapear documentId a id_producto
         const dbProductId = productType === 'combo' ? productId : await getProductIdFromDocumentId(productId);
-        
+
         if (!dbProductId) {
             return res.json({ canReview: false, message: '⚠️ Producto no encontrado.' });
         }
 
-        // Buscar si el usuario compró este producto (y el pedido no está en 'Pendiente')
+        // Buscar descripcion del producto para agrupar duplicados
+        let dbDescripcion = '';
+        const table = productType === 'combo' ? 'combo' : 'producto';
+        const descQuery = await db.query(`SELECT descripcion FROM ${table} WHERE id = $1`, [dbProductId]);
+        if (descQuery.rows.length > 0) {
+            dbDescripcion = descQuery.rows[0].descripcion;
+        }
+
+        // Buscar si el usuario compró este producto (o su duplicado por nombre)
         let query;
+        let paramsPurchase;
         if (productType === 'combo') {
             query = `
                 SELECT COUNT(*) as count
                 FROM venta v
                 JOIN detalle_venta dv ON v.id = dv.id_venta
+                JOIN combo c ON dv.id_combo = c.id
                 WHERE v.id_usuario = $1 
-                AND dv.id_combo = $2
+                AND LOWER(c.descripcion) = LOWER($2)
                 AND BTRIM(LOWER(v.estado)) != 'pendiente'`;
+            paramsPurchase = [userId, dbDescripcion];
         } else {
             query = `
                 SELECT COUNT(*) as count
                 FROM venta v
                 JOIN detalle_venta dv ON v.id = dv.id_venta
+                JOIN producto p ON dv.id_producto = p.id
                 WHERE v.id_usuario = $1 
-                AND dv.id_producto = $2
+                AND LOWER(p.descripcion) = LOWER($2)
                 AND BTRIM(LOWER(v.estado)) != 'pendiente'`;
+            paramsPurchase = [userId, dbDescripcion];
         }
 
-        const { rows: purchaseCheck } = await db.query(query, [userId, dbProductId]);
+        const { rows: purchaseCheck } = await db.query(query, paramsPurchase);
         const hasPurchased = purchaseCheck[0].count > 0;
 
         if (!hasPurchased) {
             return res.json({ canReview: false, message: '🔒 Debes comprar este producto para dejar una opinión.' });
         }
 
-        // Verificar si ya dejó reseña
-        let reviewCheck;
+        // Verificar si ya dejó reseña (en cualquiera de las versiones del producto)
+        let reviewCheckQuery;
+        let reviewCheckParams;
         if (productType === 'combo') {
-            reviewCheck = await db.query(
-                `SELECT id FROM reseña WHERE id_usuario = $1 AND id_combo = $2`,
-                [userId, dbProductId]
-            );
+            reviewCheckQuery = `
+                SELECT r.id 
+                FROM reseña r
+                JOIN combo c ON r.id_combo = c.id
+                WHERE r.id_usuario = $1 AND LOWER(c.descripcion) = LOWER($2)`;
+            reviewCheckParams = [userId, dbDescripcion];
         } else {
-            reviewCheck = await db.query(
-                `SELECT id FROM reseña WHERE id_usuario = $1 AND id_producto = $2`,
-                [userId, dbProductId]
-            );
+            reviewCheckQuery = `
+                SELECT r.id 
+                FROM reseña r
+                JOIN producto p ON r.id_producto = p.id
+                WHERE r.id_usuario = $1 AND LOWER(p.descripcion) = LOWER($2)`;
+            reviewCheckParams = [userId, dbDescripcion];
         }
+        const reviewCheck = await db.query(reviewCheckQuery, reviewCheckParams);
 
         if (reviewCheck.rows.length > 0) {
             return res.json({ canReview: false, message: '✓ Ya dejaste una opinión en este producto.' });
@@ -357,10 +377,16 @@ app.get('/api/reviews', async (req, res) => {
     try {
         // Mapear documentId a id_producto
         const dbProductId = productType === 'combo' ? productId : await getProductIdFromDocumentId(productId);
-        
+
         if (!dbProductId) {
             return res.json({ success: true, reviews: [], averageRating: 0 });
         }
+
+        // Buscar descripcion para agrupar
+        let dbDescripcion = '';
+        const table = productType === 'combo' ? 'combo' : 'producto';
+        const descQuery = await db.query(`SELECT descripcion FROM ${table} WHERE id = $1`, [dbProductId]);
+        if (descQuery.rows.length > 0) dbDescripcion = descQuery.rows[0].descripcion;
 
         let query, params;
 
@@ -369,17 +395,19 @@ app.get('/api/reviews', async (req, res) => {
                 SELECT r.id, r.titulo, r.contenido, r.calificacion, r.fecha_creacion, u.nombre as usuario_nombre
                 FROM reseña r
                 JOIN Usuario u ON r.id_usuario = u.id
-                WHERE r.id_combo = $1
+                JOIN combo c ON r.id_combo = c.id
+                WHERE LOWER(c.descripcion) = LOWER($1)
                 ORDER BY r.fecha_creacion DESC`;
-            params = [dbProductId];
+            params = [dbDescripcion];
         } else {
             query = `
                 SELECT r.id, r.titulo, r.contenido, r.calificacion, r.fecha_creacion, u.nombre as usuario_nombre
                 FROM reseña r
                 JOIN Usuario u ON r.id_usuario = u.id
-                WHERE r.id_producto = $1
+                JOIN producto p ON r.id_producto = p.id
+                WHERE LOWER(p.descripcion) = LOWER($1)
                 ORDER BY r.fecha_creacion DESC`;
-            params = [dbProductId];
+            params = [dbDescripcion];
         }
 
         const { rows: reviews } = await db.query(query, params);
@@ -415,40 +443,60 @@ app.post('/api/reviews', async (req, res) => {
 
         // Mapear documentId a id_producto
         const dbProductId = productType === 'combo' ? productId : await getProductIdFromDocumentId(productId);
-        
+
         if (!dbProductId) {
             return res.status(400).json({ error: 'Producto no encontrado' });
         }
 
-        // Verificar que el usuario compró el producto
+        // Buscar descripcion 
+        let dbDescripcion = '';
+        const table = productType === 'combo' ? 'combo' : 'producto';
+        const descQuery = await db.query(`SELECT descripcion FROM ${table} WHERE id = $1`, [dbProductId]);
+        if (descQuery.rows.length > 0) dbDescripcion = descQuery.rows[0].descripcion;
+
+        // Verificar que el usuario compró el producto (cualquier version)
         let purchaseQuery;
+        let purchaseParams;
         if (productType === 'combo') {
             purchaseQuery = `
                 SELECT COUNT(*) as count FROM venta v
                 JOIN detalle_venta dv ON v.id = dv.id_venta
-                WHERE v.id_usuario = $1 AND dv.id_combo = $2 AND BTRIM(LOWER(v.estado)) != 'pendiente'`;
+                JOIN combo c ON dv.id_combo = c.id
+                WHERE v.id_usuario = $1 AND LOWER(c.descripcion) = LOWER($2) AND BTRIM(LOWER(v.estado)) != 'pendiente'`;
+            purchaseParams = [userId, dbDescripcion];
         } else {
             purchaseQuery = `
                 SELECT COUNT(*) as count FROM venta v
                 JOIN detalle_venta dv ON v.id = dv.id_venta
-                WHERE v.id_usuario = $1 AND dv.id_producto = $2 AND BTRIM(LOWER(v.estado)) != 'pendiente'`;
+                JOIN producto p ON dv.id_producto = p.id
+                WHERE v.id_usuario = $1 AND LOWER(p.descripcion) = LOWER($2) AND BTRIM(LOWER(v.estado)) != 'pendiente'`;
+            purchaseParams = [userId, dbDescripcion];
         }
 
-        const { rows: purchaseCheck } = await db.query(purchaseQuery, [userId, dbProductId]);
+        const { rows: purchaseCheck } = await db.query(purchaseQuery, purchaseParams);
 
         if (purchaseCheck[0].count === 0) {
             return res.status(403).json({ error: 'No has comprado este producto' });
         }
 
-        // Verificar que no haya dejado reseña anterior
+        // Verificar que no haya dejado reseña anterior (en cualquier versión)
         let existingReviewQuery;
+        let existingReviewParams;
         if (productType === 'combo') {
-            existingReviewQuery = `SELECT id FROM reseña WHERE id_usuario = $1 AND id_combo = $2`;
+            existingReviewQuery = `
+                SELECT r.id FROM reseña r
+                JOIN combo c ON r.id_combo = c.id
+                WHERE r.id_usuario = $1 AND LOWER(c.descripcion) = LOWER($2)`;
+            existingReviewParams = [userId, dbDescripcion];
         } else {
-            existingReviewQuery = `SELECT id FROM reseña WHERE id_usuario = $1 AND id_producto = $2`;
+            existingReviewQuery = `
+                SELECT r.id FROM reseña r
+                JOIN producto p ON r.id_producto = p.id
+                WHERE r.id_usuario = $1 AND LOWER(p.descripcion) = LOWER($2)`;
+            existingReviewParams = [userId, dbDescripcion];
         }
 
-        const { rows: existingReview } = await db.query(existingReviewQuery, [userId, dbProductId]);
+        const { rows: existingReview } = await db.query(existingReviewQuery, existingReviewParams);
 
         if (existingReview.length > 0) {
             return res.status(403).json({ error: 'Ya dejaste una reseña en este producto' });
@@ -526,7 +574,7 @@ app.get('/api/user/me/ventas', async (req, res) => {
                     precio: d.precio_unitario,
                     precio_unitario: d.precio_unitario,
                     subtotal: d.subtotal,
-                    id_producto: d.id_producto, 
+                    id_producto: d.id_producto,
                     producto_nombre: d.producto_nombre,
                     producto: {
                         material: d.material
@@ -708,6 +756,12 @@ app.post('/api/create_preference', async (req, res) => {
     const { cart, checkoutData } = req.body;
     const userId = req.session.userId;
 
+    // --- VALIDAR DISPONIBILIDAD DE STOCK EN STRAPI ---
+    const stockError = await checkStockBeforePayment(cart);
+    if (stockError) {
+        return res.status(400).json({ error: stockError });
+    }
+
     let client;
     try {
         client = await db.getClient();
@@ -834,17 +888,17 @@ app.post('/api/create_preference', async (req, res) => {
                     detalle_producto: detalleCheckout
                 }
             };
-            
+
             console.log("📤 Enviando a Strapi:", JSON.stringify(payload, null, 2));
-            
+
             const resStrapi = await fetch('http://127.0.0.1:1337/api/pedidos', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-            
+
             const strapiText = await resStrapi.text();
-            
+
             if (!resStrapi.ok) {
                 console.error("❌ Strapi ERROR. Status:", resStrapi.status);
                 console.error("Respuesta completa:", strapiText);
@@ -862,6 +916,12 @@ app.post('/api/create_preference', async (req, res) => {
         const isNgrok = !!process.env.NGROK_URL;
         const returnBase = isNgrok ? process.env.NGROK_URL : originUrl;
 
+        // Se preparan los items del carrito para los metadatos de modo que en el webhook se pueda descontar stock
+        const cartItemsForMetadata = resolvedCart.map(c => ({
+            id: c.documentId || String(c.id),
+            quantity: c.cantidad
+        }));
+
         const preferenceClient = new Preference(clientMP);
         const preferenceResponse = await preferenceClient.create({
             body: {
@@ -873,6 +933,9 @@ app.post('/api/create_preference', async (req, res) => {
                         quantity: 1
                     }
                 ],
+                metadata: {
+                    cart_json: JSON.stringify(cartItemsForMetadata).substring(0, 500)
+                },
                 external_reference: String(ventaId),
                 back_urls: {
                     success: isNgrok ? `${returnBase}/api/checkout/success` : `${returnBase}/final`,
@@ -1027,7 +1090,7 @@ async function updateStrapiEstado(ventaId, nuevoEstadoVenta) {
         } else {
             console.log(`⚠️ No se encontró pedido en Strapi con id_venta=${ventaId} para actualizar.`);
         }
-    } catch(err) {
+    } catch (err) {
         console.error("No se pudo sync Strapi status", err.message);
     }
 }
@@ -1037,35 +1100,52 @@ app.get('/api/checkout/success', async (req, res) => {
     const paymentId = req.query.payment_id;
     const status = req.query.status;
     const externalRef = req.query.external_reference;
-    
+
     console.log(`Llegó success de MP: paymentId=${paymentId}, status=${status}, externalRef=${externalRef}`);
-    
+
     if (status === 'approved' && externalRef) {
         try {
             const paymentClient = new Payment(clientMP);
             const paymentInfo = await paymentClient.get({ id: paymentId });
-            
+
             if (paymentInfo.status === 'approved') {
-                const { rows } = await db.query("UPDATE venta SET estado = 'Confirmado' WHERE id = $1 RETURNING id_cupon, id_usuario, total", [externalRef]);
-                if (rows.length > 0 && rows[0].id_cupon) {
-                    await db.query("UPDATE Cupon SET usado = true, activo = false WHERE id = $1", [rows[0].id_cupon]);
-                }
+                // Hacemos el UPDATE solo si no estaba 'Confirmado', para evitar doble proceso si se juntan el success y webhook
+                const { rows } = await db.query("UPDATE venta SET estado = 'Confirmado' WHERE id = $1 AND estado != 'Confirmado' RETURNING id_cupon, id_usuario, total", [externalRef]);
                 
-                await updateStrapiEstado(externalRef, 'Aprobado');
-                console.log(`✅ Pago verificado y aprobado. Venta ID: ${externalRef} - Cupón descontado si aplica.`);
-                
-                // Enviar email de confirmación "fire and forget"
-                if (rows.length > 0 && rows[0].id_usuario) {
+                if (rows.length > 0) {
+                    if (rows[0].id_cupon) {
+                        await db.query("UPDATE Cupon SET usado = true, activo = false WHERE id = $1", [rows[0].id_cupon]);
+                    }
+
+                    await updateStrapiEstado(externalRef, 'Aprobado');
+                    console.log(`✅ Pago verificado y aprobado. Venta ID: ${externalRef} - Cupón descontado si aplica.`);
+
+                    // Descontar stock en Strapi leyendo los metadatos de Mercado Pago
+                    if (paymentInfo.metadata && paymentInfo.metadata.cart_json) {
+                        try {
+                            const cartItems = JSON.parse(paymentInfo.metadata.cart_json);
+                            console.log('🛒 Check-out Success: Iniciando descuento de stock para items:', cartItems);
+                            
+                            (async () => {
+                                await deductStockFromStrapi(cartItems);
+                            })();
+                        } catch (parseErr) {
+                            console.error('❌ Check-out Success: Error parseando cart_json en metadata', parseErr);
+                        }
+                    }
+
+                    // Enviar email de confirmación "fire and forget"
+                    if (rows[0].id_usuario) {
                     (async () => {
                         try {
                             const idUsuario = rows[0].id_usuario;
                             const totalVenta = rows[0].total;
-                            
+
                             // Obtener información del usuario
                             const { rows: userRows } = await db.query("SELECT nombre, email FROM Usuario WHERE id = $1", [idUsuario]);
                             if (userRows.length > 0) {
                                 const userData = userRows[0];
-                                
+
                                 // Obtener detalles de la orden
                                 const { rows: detailRows } = await db.query(`
                                     SELECT dv.cantidad, dv.subtotal, COALESCE(p.descripcion, c.descripcion) as nombre
@@ -1074,13 +1154,13 @@ app.get('/api/checkout/success', async (req, res) => {
                                     LEFT JOIN Combo c ON dv.id_combo = c.id
                                     WHERE dv.id_venta = $1
                                 `, [externalRef]);
-                                
+
                                 const orderDetails = {
                                     id: externalRef,
                                     total: totalVenta,
                                     items: detailRows
                                 };
-                                
+
                                 await sendOrderConfirmation(userData, orderDetails);
                             }
                         } catch (emailErr) {
@@ -1088,6 +1168,7 @@ app.get('/api/checkout/success', async (req, res) => {
                         }
                     })();
                 }
+            } // CIERRA if (rows.length > 0)
             } else {
                 console.log(`⚠️ MP dice que no está aprobado. Estado real: ${paymentInfo.status}`);
             }
@@ -1095,7 +1176,7 @@ app.get('/api/checkout/success', async (req, res) => {
             console.error('❌ Error verificando pago en MP:', error.message || error);
         }
     }
-    
+
     const frontUrl = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
     res.redirect(`${frontUrl}/final`);
 });
@@ -1106,7 +1187,7 @@ app.get('/api/checkout/failure', async (req, res) => {
         try {
             await db.query("UPDATE venta SET estado = 'Cancelado' WHERE id = $1", [externalRef]);
             await updateStrapiEstado(externalRef, 'Cancelado');
-        } catch(e) {}
+        } catch (e) { }
     }
     const frontUrl = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
     res.redirect(`${frontUrl}/pago-tarjeta?error=rechazado`);
@@ -1120,34 +1201,53 @@ app.get('/api/checkout/pending', async (req, res) => {
 app.post('/api/webhook_mp', async (req, res) => {
     const paymentId = req.query['data.id'] || (req.body && req.body.data && req.body.data.id);
     const type = req.query.type || (req.body && req.body.type);
-    
+
     if (type === 'payment' && paymentId) {
         try {
             const paymentClient = new Payment(clientMP);
             const paymentInfo = await paymentClient.get({ id: paymentId });
-            
+
             if (paymentInfo.status === 'approved') {
                 const ventaId = paymentInfo.external_reference;
                 if (ventaId) {
-                    const { rows } = await db.query("UPDATE venta SET estado = 'Confirmado' WHERE id = $1 RETURNING id_cupon, id_usuario, total", [ventaId]);
-                    if (rows.length > 0 && rows[0].id_cupon) {
-                        await db.query("UPDATE Cupon SET usado = true, activo = false WHERE id = $1", [rows[0].id_cupon]);
-                    }
-                    await updateStrapiEstado(ventaId, 'Aprobado');
-                    console.log(`✅ Webhook MP: Pago aprobado para la venta ID: ${ventaId} - Cupón desactivado si aplica.`);
+                    // Hacemos el UPDATE solo si no estaba 'Confirmado', para evitar doble proceso
+                    const { rows } = await db.query("UPDATE venta SET estado = 'Confirmado' WHERE id = $1 AND estado != 'Confirmado' RETURNING id_cupon, id_usuario, total", [ventaId]);
                     
+                    if (rows.length > 0) {
+                        if (rows[0].id_cupon) {
+                            await db.query("UPDATE Cupon SET usado = true, activo = false WHERE id = $1", [rows[0].id_cupon]);
+                        }
+                        await updateStrapiEstado(ventaId, 'Aprobado');
+                        console.log(`✅ Webhook MP: Pago aprobado para la venta ID: ${ventaId} - Cupón desactivado si aplica.`);
+
+                    // Descontar stock en Strapi leyendo los metadatos de Mercado Pago
+                    if (paymentInfo.metadata && paymentInfo.metadata.cart_json) {
+                        try {
+                            const cartItems = JSON.parse(paymentInfo.metadata.cart_json);
+                            console.log('🛒 Webhook MP: Iniciando descuento de stock para items:', cartItems);
+                            
+                            // Esperar a que se actualice el stock, o hacerlo asíncróno si se prefiere. 
+                            // Lo dejamos sin await superior para no trabar el webhook, pero sí dentro de una async function
+                            (async () => {
+                                await deductStockFromStrapi(cartItems);
+                            })();
+                        } catch (parseErr) {
+                            console.error('❌ Webhook MP: Error parseando cart_json en metadata', parseErr);
+                        }
+                    }
+
                     // Enviar email de confirmación "fire and forget" para no bloquear la respuesta a MP
                     if (rows.length > 0 && rows[0].id_usuario) {
                         (async () => {
                             try {
                                 const idUsuario = rows[0].id_usuario;
                                 const totalVenta = rows[0].total;
-                                
+
                                 // Obtener información del usuario
                                 const { rows: userRows } = await db.query("SELECT nombre, email FROM Usuario WHERE id = $1", [idUsuario]);
                                 if (userRows.length > 0) {
                                     const userData = userRows[0];
-                                    
+
                                     // Obtener detalles de la orden
                                     const { rows: detailRows } = await db.query(`
                                         SELECT dv.cantidad, dv.subtotal, COALESCE(p.descripcion, c.descripcion) as nombre
@@ -1156,13 +1256,13 @@ app.post('/api/webhook_mp', async (req, res) => {
                                         LEFT JOIN Combo c ON dv.id_combo = c.id
                                         WHERE dv.id_venta = $1
                                     `, [ventaId]);
-                                    
+
                                     const orderDetails = {
                                         id: ventaId,
                                         total: totalVenta,
                                         items: detailRows
                                     };
-                                    
+
                                     // Llamar al servicio sin el await dentro del try-catch de orden superior para que no bloquee
                                     await sendOrderConfirmation(userData, orderDetails);
                                 }
@@ -1170,9 +1270,10 @@ app.post('/api/webhook_mp', async (req, res) => {
                                 console.error('❌ Error enviando email de confirmación (Fire&Forget):', emailErr);
                             }
                         })();
-                    }
-                }
-            }
+                    } // CIERRA if (rows[0].id_usuario)
+                    } // CIERRA if (rows.length > 0)
+                } // CIERRA if (ventaId)
+            } // CIERRA if (paymentInfo.status === 'approved')
         } catch (error) {
             console.error('❌ Error al procesar webhook de MP:', error);
             return res.status(500).send('Error');
@@ -1197,7 +1298,7 @@ app.post('/api/sync-estado-venta', async (req, res) => {
             // Mapeo seguro para el dominio estado_e en PostgreSQL
             let pgEnvio = estado_envio;
             if (estado_envio === 'Pendiente de envío') pgEnvio = 'Preparando';
-            
+
             await db.query("UPDATE Envio SET estado = $1 WHERE id_venta = $2", [pgEnvio, id_venta]);
             console.log(`🔄 Sync desde Strapi: Venta ${id_venta} -> Envio: ${pgEnvio}`);
         }

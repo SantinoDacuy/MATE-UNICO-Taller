@@ -23,7 +23,6 @@ export default function PagoDireccion() {
   const [provinciaSeleccionada, setProvinciaSeleccionada] = useState('');
   const [ciudadSeleccionada, setCiudadSeleccionada] = useState('');
 
-  const [guardarInfo, setGuardarInfo] = useState(false); 
   const [coupon, setCoupon] = useState('');
   const [appliedCuponId, setAppliedCuponId] = useState(null); // Guardamos el ID del cupón de la DB
   const [toast, setToast] = useState(null);
@@ -101,17 +100,6 @@ export default function PagoDireccion() {
     e.preventDefault();
     if (cart.length === 0) return setToast('El carrito está vacío');
     
-    if (guardarInfo) {
-      try {
-        await fetch('http://localhost:3001/api/user/me', {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nombre, apellido, calle: direccion, provincia: provinciaSeleccionada, ciudad: ciudadSeleccionada })
-        });
-      } catch (err) {}
-    }
-
     sessionStorage.setItem('checkout_data', JSON.stringify({ 
         nombre, direccion, provinciaSeleccionada, ciudadSeleccionada, 
         descuento: descuento, totalFinal: total,
@@ -191,10 +179,6 @@ export default function PagoDireccion() {
                 {municipios.map(m => <option key={m.id} value={m.nombre}>{m.nombre}</option>)}
               </select>
             </div>
-            <label className="checkbox-guardar">
-              Guardar información de contacto 
-              <input type="checkbox" checked={guardarInfo} onChange={(e) => setGuardarInfo(e.target.checked)} />
-            </label>
             <button type="submit" className="btn-continuar">Continuar al Envío</button>
           </form>
         </section>
