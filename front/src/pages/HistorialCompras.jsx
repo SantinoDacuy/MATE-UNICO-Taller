@@ -89,16 +89,21 @@ export default function HistorialCompras() {
     };
 
     const getEstadoStyles = (estado) => {
-        switch (estado) {
+        const est = estado ? estado.trim() : '';
+        switch (est) {
             case 'Entregado':
-                return { backgroundColor: '#d4edda', color: '#155724' };
+            case 'Confirmado':
+                return { backgroundColor: '#d4edda', color: '#155724' }; // Green
             case 'En camino':
             case 'Despachado':
             case 'Preparando':
-                return { backgroundColor: '#fff3cd', color: '#856404' };
+                return { backgroundColor: '#fff3cd', color: '#856404' }; // Yellow/Orange
+            case 'Rechazado':
+            case 'Cancelado':
+                return { backgroundColor: '#f8d7da', color: '#721c24' }; // Red
             case 'Pendiente':
             default:
-                return { backgroundColor: '#cce5ff', color: '#004085' };
+                return { backgroundColor: '#cce5ff', color: '#004085' }; // Blue
         }
     };
 

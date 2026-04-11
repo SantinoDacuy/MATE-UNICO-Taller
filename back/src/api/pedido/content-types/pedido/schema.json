@@ -32,7 +32,6 @@
     "estado_envio": {
       "type": "enumeration",
       "enum": [
-        "Pendiente de envío",
         "Preparando",
         "Despachado",
         "En camino",

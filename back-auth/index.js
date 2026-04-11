@@ -544,7 +544,10 @@ app.get('/api/user/me/ventas', async (req, res) => {
     try {
         // Get ventas with basic info - Mostrar todo excepto 'Pendiente'
         const userId = req.session.userId;
-        const ventasQuery = `SELECT v.id, v.fecha_venta, v.subtotal, v.descuento, v.total, v.estado, v.metodo_pago, e.estado as estado_envio 
+        const ventasQuery = `SELECT v.id, v.fecha_venta, v.subtotal, v.descuento, v.total, 
+                                CASE WHEN v.estado = 'Cancelado' THEN 'Rechazado' ELSE v.estado END as estado, 
+                                v.metodo_pago, 
+                                e.estado as estado_envio 
                              FROM venta v
                              LEFT JOIN Envio e ON v.id = e.id_venta
                              WHERE v.id_usuario = ${userId} AND BTRIM(LOWER(v.estado)) != 'pendiente'
@@ -627,7 +630,7 @@ app.post('/debug/seed_user', async (req, res) => {
         const sampleVentas = [
             { id: 1245, fecha: '2025-09-15', detalle: 'Mate Imperial - Negro (1 u.)', estado: 'Entregado', total: 27500 },
             { id: 1238, fecha: '2025-09-02', detalle: 'Combo 1 (1 u.)', estado: 'Enviado', total: 50200 },
-            { id: 1227, fecha: '2025-06-20', detalle: 'Mate Camionero - Marron (1 u.)', estado: 'Pendiente de envío', total: 18000 },
+            { id: 1227, fecha: '2025-06-20', detalle: 'Mate Camionero - Marron (1 u.)', estado: 'Preparando', total: 18000 },
         ];
 
         for (const v of sampleVentas) {
@@ -691,7 +694,7 @@ app.post('/debug/seed_session', (req, res) => {
     req.session.ventas = [
         { id: 1245, fecha_venta: '2025-09-15', detalle: 'Mate Imperial - Negro (1 u.)', estado: 'Entregado', total: 27500 },
         { id: 1238, fecha_venta: '2025-09-02', detalle: 'Combo 1 (1 u.)', estado: 'Enviado', total: 50200 },
-        { id: 1227, fecha_venta: '2025-06-20', detalle: 'Mate Camionero - Marron (1 u.)', estado: 'Pendiente de envío', total: 18000 },
+        { id: 1227, fecha_venta: '2025-06-20', detalle: 'Mate Camionero - Marron (1 u.)', estado: 'Preparando', total: 18000 },
     ];
     return res.json({ ok: true });
 });
@@ -883,7 +886,7 @@ app.post('/api/create_preference', async (req, res) => {
                     cliente_email: req.session.user ? req.session.user.email : 'anonimo',
                     total: totalFinal,
                     estado_venta: 'Pendiente',
-                    estado_envio: 'Pendiente de envío',
+                    estado_envio: 'Preparando',
                     metodo_envio: checkoutData.metodoEnvio || 'N/A',
                     detalle_producto: detalleCheckout
                 }
@@ -1289,18 +1292,21 @@ app.post('/api/sync-estado-venta', async (req, res) => {
         if (!id_venta) return res.status(400).json({ error: 'Falta id_venta' });
 
         if (estado_venta) {
-            const pgEstado = estado_venta === 'Aprobado' ? 'Confirmado' : estado_venta;
+            let pgEstado = estado_venta === 'Aprobado' ? 'Confirmado' : estado_venta;
+            if (estado_venta === 'Rechazado') pgEstado = 'Cancelado'; // Mapeo a dominio válido en PG
             await db.query("UPDATE venta SET estado = $1 WHERE id = $2", [pgEstado, id_venta]);
             console.log(`🔄 Sync desde Strapi: Venta ${id_venta} -> Pago: ${pgEstado}`);
         }
 
         if (estado_envio) {
-            // Mapeo seguro para el dominio estado_e en PostgreSQL
-            let pgEnvio = estado_envio;
-            if (estado_envio === 'Pendiente de envío') pgEnvio = 'Preparando';
-
-            await db.query("UPDATE Envio SET estado = $1 WHERE id_venta = $2", [pgEnvio, id_venta]);
-            console.log(`🔄 Sync desde Strapi: Venta ${id_venta} -> Envio: ${pgEnvio}`);
+            // Estados de envío válidos: Preparando, Despachado, En camino, Entregado
+            const estadosValidos = ['Preparando', 'Despachado', 'En camino', 'Entregado'];
+            if (estadosValidos.includes(estado_envio)) {
+                await db.query("UPDATE Envio SET estado = $1 WHERE id_venta = $2", [estado_envio, id_venta]);
+                console.log(`🔄 Sync desde Strapi: Venta ${id_venta} -> Envio: ${estado_envio}`);
+            } else {
+                console.warn(`⚠️ Estado de envío inválido: ${estado_envio}`);
+            }
         }
 
         res.json({ success: true });

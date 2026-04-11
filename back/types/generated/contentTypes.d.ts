@@ -484,13 +484,7 @@ export interface ApiPedidoPedido extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     detalle_producto: Schema.Attribute.Text;
     estado_envio: Schema.Attribute.Enumeration<
-      [
-        'Pendiente de env\u00EDo',
-        'Preparando',
-        'Despachado',
-        'En camino',
-        'Entregado',
-      ]
+      ['Preparando', 'Despachado', 'En camino', 'Entregado']
     >;
     estado_venta: Schema.Attribute.Enumeration<
       ['Pendiente', 'Aprobado', 'Rechazado', 'Cancelado']

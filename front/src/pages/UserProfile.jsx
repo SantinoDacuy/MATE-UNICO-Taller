@@ -176,11 +176,9 @@ export default function UserProfile() {
                                         <p><strong>Pedido #{v.id}</strong> - {v.estado}</p>
                                         <div className="order-details">
                                             {v.detalle?.map((d, i) => (
-                                                <Link 
+                                                <div 
                                                     key={i} 
-                                                    to={`/producto/${d.id_producto}`}
-                                                    onClick={(e) => e.stopPropagation()} 
-                                                    style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#333', textDecoration: 'none', marginTop: '8px', padding: '5px', borderRadius: '4px' }}
+                                                    style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#333', marginTop: '8px', padding: '5px', borderRadius: '4px' }}
                                                 >
                                                     <img 
                                                         src={d.strapiInfo?.imageUrl || '/assets/default-placeholder.png'} 
@@ -191,7 +189,7 @@ export default function UserProfile() {
                                                         <strong>{d.strapiInfo?.nombre || d.producto_nombre || 'Producto'}</strong> <br/>
                                                         ({d.cantidad} u.)
                                                     </div>
-                                                </Link>
+                                                </div>
                                             ))}
                                         </div>
                                         <p style={{ marginTop: '5px' }}>Total: ${Number(v.total).toLocaleString('es-AR')}</p>

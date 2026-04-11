@@ -1,4 +1,23 @@
+const { ApplicationError } = require('@strapi/utils').errors;
+
 module.exports = {
+  async beforeUpdate(event) {
+    const { data, where } = event.params;
+    
+    // Restricciones para el estado Rechazado
+    if (data.estado_venta === 'Rechazado') {
+      const currentRecord = await strapi.entityService.findOne('api::pedido.pedido', where.id);
+      const newEstadoEnvio = data.estado_envio || currentRecord.estado_envio;
+      
+      // Regla 1: No se puede rechazar si el estado de envío ya es "Entregado"
+      if (newEstadoEnvio === 'Entregado') {
+        throw new ApplicationError('Un pedido que ya fue entregado no puede ser rechazado.');
+      }
+      
+      // Regla 2: Si es Rechazado, forzar estado de envío a Preparando
+      data.estado_envio = 'Preparando';
+    }
+  },
   async afterUpdate(event) {
     await syncToBackend(event.result);
   },
