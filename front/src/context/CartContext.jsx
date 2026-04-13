@@ -71,6 +71,33 @@ export const CartProvider = ({ children }) => {
     setDescuento(0); // Si vaciamos el carrito, borramos el descuento también
   };
 
+  // --- NUEVA FUNCIÓN: Actualizar stock de items desde backend ---
+  const updateStockFromBackend = async () => {
+    try {
+      const updatedCart = [...cart];
+      
+      for (let i = 0; i < updatedCart.length; i++) {
+        const item = updatedCart[i];
+        const res = await fetch(`http://localhost:1337/api/productos/${item.documentId}?fields=stock`);
+        
+        if (res.ok) {
+          const data = await res.json();
+          const nuevoStock = data.data?.stock ?? 0;
+          updatedCart[i].stock = nuevoStock;
+          
+          // Si la cantidad supera el nuevo stock, ajustar automáticamente
+          if (item.cantidad > nuevoStock) {
+            updatedCart[i].cantidad = Math.max(1, nuevoStock);
+          }
+        }
+      }
+      
+      setCart(updatedCart);
+    } catch (error) {
+      console.error('Error actualizando stock desde backend:', error);
+    }
+  };
+
   const totalItems = cart.reduce((acc, item) => acc + item.cantidad, 0);
   const totalPrice = cart.reduce((acc, item) => acc + (item.precio * item.cantidad), 0);
 
@@ -78,7 +105,7 @@ export const CartProvider = ({ children }) => {
     // EXPORTAMOS EL DESCUENTO PARA QUE LAS PANTALLAS LO PUEDAN USAR
     <CartContext.Provider value={{ 
       cart, addToCart, removeFromCart, clearCart, totalItems, totalPrice,
-      descuento, setDescuento 
+      descuento, setDescuento, updateStockFromBackend 
     }}>
       {children}
     </CartContext.Provider>

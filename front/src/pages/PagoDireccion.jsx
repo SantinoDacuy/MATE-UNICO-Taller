@@ -8,7 +8,7 @@ import imagenComodin from '../assets/camionero1.png';
 const formatPrecio = (precio) => `$${precio.toLocaleString('es-AR')}`;
 
 export default function PagoDireccion() {
-  const { cart, removeFromCart, totalPrice, totalItems, descuento, setDescuento } = useContext(CartContext);
+  const { cart, totalPrice, totalItems, descuento, setDescuento, updateStockFromBackend } = useContext(CartContext);
   const navigate = useNavigate();
   
   const [autorizado, setAutorizado] = useState(false);
@@ -26,6 +26,7 @@ export default function PagoDireccion() {
   const [coupon, setCoupon] = useState('');
   const [appliedCuponId, setAppliedCuponId] = useState(null); // Guardamos el ID del cupón de la DB
   const [toast, setToast] = useState(null);
+  const [validando, setValidando] = useState(false);
   const envio = 4000;
   const grabado = cart.reduce((acc, item) => (item.grabado && item.grabado !== 'Sin grabado' ? acc + 3000 : acc), 0);
   const total = (totalPrice + envio + grabado) - descuento;
@@ -96,16 +97,55 @@ export default function PagoDireccion() {
     setCoupon('');
   };
 
+  // --- VALIDACIÓN DE STOCK ANTES DE CONTINUAR ---
+  const validateStock = async () => {
+    try {
+      setValidando(true);
+      
+      // Primero, actualizar el stock del carrito desde el backend
+      await updateStockFromBackend();
+      
+      // Luego, verificar que todo sigue siendo válido
+      for (const item of cart) {
+        if (item.cantidad > item.stock) {
+          if (item.stock === 0) {
+            setToast(`❌ "${item.nombre}" ya no tiene stock`);
+          } else {
+            setToast(`❌ "${item.nombre}" solo quedan ${item.stock} unidades (tu carrito tiene ${item.cantidad})`);
+          }
+          setValidando(false);
+          return false;
+        }
+      }
+      
+      // Si llegamos aquí, todo el stock está disponible
+      setToast('✅ Stock verificado! Continuando...');
+      setValidando(false);
+      return true;
+    } catch (error) {
+      console.error('Error validando stock:', error);
+      setToast('Error al verificar disponibilidad');
+      setValidando(false);
+      return false;
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (cart.length === 0) return setToast('El carrito está vacío');
+    
+    // Validar stock ANTES de continuar
+    const stockOK = await validateStock();
+    if (!stockOK) return; // Bloquear si hay problemas de stock
     
     sessionStorage.setItem('checkout_data', JSON.stringify({ 
         nombre, direccion, provinciaSeleccionada, ciudadSeleccionada, 
         descuento: descuento, totalFinal: total,
         id_cupon: appliedCuponId // Pasamos el ID para que el back lo registre en la venta
     }));
-    navigate('/pago-envio');
+    
+    // Pequeño delay para que vea el toast de éxito
+    setTimeout(() => navigate('/pago-envio'), 500);
   };
 
   useEffect(() => {
@@ -134,7 +174,6 @@ export default function PagoDireccion() {
                   </div>
                   <div className="precio-producto-checkout">{formatPrecio(producto.precio * producto.cantidad)}</div>
                 </div>
-                <button type="button" className="eliminar-link" onClick={() => removeFromCart(producto.id, producto.color, producto.grabado)}>Eliminar</button>
               </div>
             ))}
           </div>
@@ -179,7 +218,9 @@ export default function PagoDireccion() {
                 {municipios.map(m => <option key={m.id} value={m.nombre}>{m.nombre}</option>)}
               </select>
             </div>
-            <button type="submit" className="btn-continuar">Continuar al Envío</button>
+            <button type="submit" className="btn-continuar" disabled={validando}>
+              {validando ? 'Validando stock...' : 'Continuar al Envío'}
+            </button>
           </form>
         </section>
       </main>

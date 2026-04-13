@@ -316,8 +316,7 @@ app.get('/api/reviews/can-review', async (req, res) => {
                 JOIN detalle_venta dv ON v.id = dv.id_venta
                 JOIN combo c ON dv.id_combo = c.id
                 WHERE v.id_usuario = $1 
-                AND LOWER(c.descripcion) = LOWER($2)
-                AND BTRIM(LOWER(v.estado)) != 'pendiente'`;
+                AND LOWER(c.descripcion) = LOWER($2)`;
             paramsPurchase = [userId, dbDescripcion];
         } else {
             query = `
@@ -326,8 +325,7 @@ app.get('/api/reviews/can-review', async (req, res) => {
                 JOIN detalle_venta dv ON v.id = dv.id_venta
                 JOIN producto p ON dv.id_producto = p.id
                 WHERE v.id_usuario = $1 
-                AND LOWER(p.descripcion) = LOWER($2)
-                AND BTRIM(LOWER(v.estado)) != 'pendiente'`;
+                AND LOWER(p.descripcion) = LOWER($2)`;
             paramsPurchase = [userId, dbDescripcion];
         }
 

@@ -14,7 +14,7 @@ const SHIPPING_METHODS = [
 const formatPrecio = (precio) => `$${precio.toLocaleString('es-AR')}`;
 
 const PagoEnvio = () => {
-  const { cart, removeFromCart, totalPrice, totalItems, descuento } = useContext(CartContext);
+  const { cart, totalPrice, totalItems, descuento } = useContext(CartContext);
   const navigate = useNavigate();
 
   const [metodoSeleccionado, setMetodoSeleccionado] = useState(() => 
@@ -77,7 +77,6 @@ const PagoEnvio = () => {
                   </div>
                   <div className="precio-producto-checkout">{formatPrecio(producto.precio * producto.cantidad)}</div>
                 </div>
-                <button type="button" className="eliminar-link" onClick={() => removeFromCart(producto.id, producto.color, producto.grabado)}>Eliminar</button>
               </div>
             ))}
           </div>
