@@ -473,13 +473,17 @@ const ProductPage = () => {
                     key={itemId}
                     className="product-card"
                     onClick={() => navigate(`/producto/${itemId}`)}
-                    style={{ cursor: 'pointer' }}
                     role="button"
                     aria-label={`Ver ${item.nombre}`}
                   >
-                    <img src={itemImage} alt={item.nombre || 'Mate similar'} />
-                    <div className="card-overlay" style={{ bottom: '0', padding: '8px' }}>
-                      <span>{item.nombre || 'Producto sin nombre'}</span>
+                    <div className="card-image-wrapper">
+                      <img src={itemImage} alt={item.nombre || 'Mate similar'} />
+                      <div className="card-overlay">
+                        <span className="card-view-more">Ver detalle</span>
+                      </div>
+                    </div>
+                    <div className="card-info">
+                      <span className="card-product-name">{item.nombre || 'Producto sin nombre'}</span>
                     </div>
                   </div>
                 );
