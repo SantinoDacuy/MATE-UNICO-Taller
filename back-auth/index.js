@@ -153,11 +153,19 @@ app.get('/api/user/me', async (req, res) => {
         return res.status(401).json({ loggedIn: false });
     }
     try {
-        const { rows } = await db.query('SELECT id, email, nombre, apellido, telefono, calle, numero, foto_url, favoritos_json FROM Usuario WHERE id = $1', [req.session.userId]);
+        const { rows } = await db.query(`
+            SELECT u.id, u.email, u.nombre, u.apellido, u.telefono, u.calle, u.numero, u.foto_url, u.favoritos_json, c.nombre as ciudad, c.provincia 
+            FROM Usuario u 
+            LEFT JOIN Ciudad c ON u.id_ciudad = c.ciudad_id 
+            WHERE u.id = $1
+        `, [req.session.userId]);
+        
         if (!rows || rows.length === 0) return res.status(404).json({ loggedIn: false });
+        
         const user = rows[0];
         // normalize foto_url field name to picture for frontend
         user.picture = user.foto_url || (req.session.user && req.session.user.picture) || null;
+        
         // parse favoritos_json into favoritos array if present
         try {
             user.favoritos = user.favoritos_json ? JSON.parse(user.favoritos_json) : [];
@@ -165,6 +173,7 @@ app.get('/api/user/me', async (req, res) => {
         } catch (e) {
             user.favoritos = [];
         }
+        
         return res.json({ loggedIn: true, user });
     } catch (err) {
         console.error('Error fetching user from DB:', err);
@@ -175,24 +184,57 @@ app.get('/api/user/me', async (req, res) => {
 });
 
 app.post('/api/user/me', async (req, res) => {
-    if (!req.session || !req.session.userId) return res.status(401).json({ success: false });
-    const { nombre, apellido, telefono, calle, numero, picture } = req.body;
+    if (!req.session || !req.session.userId) return res.status(401).json({ success: false, error: 'No logueado' });
+    
+    const { nombre, apellido, telefono, calle, numero, provincia, ciudad, picture } = req.body;
+    const userId = req.session.userId;
+
     try {
-        // try to update foto_url if column exists
-        try {
-            await db.query(`UPDATE Usuario SET nombre=$1, apellido=$2, telefono=$3, calle=$4, numero=$5, foto_url=COALESCE($6,foto_url) WHERE id=$7`, [nombre, apellido, telefono, calle, numero, picture || null, req.session.userId]);
-        } catch (e) {
-            // column foto_url may not exist; update without it
-            await db.query(`UPDATE Usuario SET nombre=$1, apellido=$2, telefono=$3, calle=$4, numero=$5 WHERE id=$6`, [nombre, apellido, telefono, calle, numero, req.session.userId]);
+        // 1. Manejo de Ciudad y Provincia
+        let ciudadId = null;
+        if (ciudad && provincia) {
+            const { rows: findCiudad } = await db.query("SELECT ciudad_id FROM Ciudad WHERE nombre=$1 AND provincia=$2", [ciudad, provincia]);
+            if (findCiudad.length > 0) {
+                ciudadId = findCiudad[0].ciudad_id;
+            } else {
+                const ins = await db.query("INSERT INTO Ciudad (nombre, CP, provincia) VALUES ($1, $2, $3) RETURNING ciudad_id", [ciudad, null, provincia]);
+                ciudadId = ins.rows[0].ciudad_id;
+            }
         }
-        // refresh session user
-        req.session.user = { id: req.session.userId, email: req.session.user ? req.session.user.email : null, nombre, apellido, picture };
+
+        // 2. Actualización de Usuario
+        // Intentamos actualizar con foto_url si la columna existe
+        try {
+            await db.query(
+                `UPDATE Usuario SET nombre=$1, apellido=$2, telefono=$3, calle=$4, numero=$5, id_ciudad=$6, foto_url=COALESCE($7, foto_url) WHERE id=$8`,
+                [nombre, apellido, telefono, calle, Number(numero) || null, ciudadId, picture || null, userId]
+            );
+        } catch (e) {
+            // Si falla por columna inexistente (foto_url), actualizamos el resto
+            await db.query(
+                `UPDATE Usuario SET nombre=$1, apellido=$2, telefono=$3, calle=$4, numero=$5, id_ciudad=$6 WHERE id=$7`,
+                [nombre, apellido, telefono, calle, Number(numero) || null, ciudadId, userId]
+            );
+        }
+
+        // 3. Actualizar sesión para reflejar cambios inmediatos
+        req.session.user = { 
+            ...req.session.user, 
+            id: userId, 
+            nombre, 
+            apellido, 
+            telefono, 
+            calle, 
+            numero, 
+            provincia, 
+            ciudad, 
+            picture: picture || (req.session.user?.picture) 
+        };
+
         return res.json({ success: true });
     } catch (err) {
-        console.error('Error updating user:', err);
-        // fallback: update session only
-        req.session.user = { ...(req.session.user || {}), nombre, apellido, telefono, calle, numero, picture };
-        return res.status(500).json({ success: false, error: 'DB update failed, changes saved in session only' });
+        console.error('Error updating profile:', err);
+        return res.status(500).json({ success: false, error: 'Error al actualizar base de datos' });
     }
 });
 
@@ -697,31 +739,7 @@ app.post('/debug/seed_session', (req, res) => {
     return res.json({ ok: true });
 });
 
-// Endpoint para obtener el usuario logueado (si hay sesión)
-app.post('/api/user/me', async (req, res) => {
-    if (!req.session || !req.session.userId) return res.status(401).json({ error: 'No logueado' });
-    const { nombre, apellido, telefono, calle, numero, provincia, ciudad } = req.body;
-    try {
-        let ciudadId = null;
-        if (ciudad && provincia) {
-            const { rows: findCiudad } = await db.query("SELECT ciudad_id FROM Ciudad WHERE nombre=$1 AND provincia=$2", [ciudad, provincia]);
-            if (findCiudad.length > 0) {
-                ciudadId = findCiudad[0].ciudad_id;
-            } else {
-                const ins = await db.query("INSERT INTO Ciudad (nombre, CP, provincia) VALUES ($1, $2, $3) RETURNING ciudad_id", [ciudad, null, provincia]);
-                ciudadId = ins.rows[0].ciudad_id;
-            }
-        }
-        await db.query(
-            'UPDATE Usuario SET nombre=$1, apellido=$2, telefono=$3, calle=$4, numero=$5, id_ciudad=$6 WHERE id=$7',
-            [nombre, apellido, telefono, calle, Number(numero) || null, ciudadId, req.session.userId]
-        );
-        res.json({ success: true });
-    } catch (err) {
-        console.error('Update profile Error:', err);
-        res.status(500).json({ error: 'DB error' });
-    }
-});
+// Eliminamos el duplicado de /api/user/me que estaba aquí
 app.get('/auth/me', async (req, res) => {
     if (!req.session || !req.session.userId) return res.status(401).json({ loggedIn: false });
     try {
