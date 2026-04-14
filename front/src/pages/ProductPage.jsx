@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Heart } from 'lucide-react';
 import { CartContext } from '../context/CartContext';
 import ReviewsSection from '../components/ReviewsSection';
+import Breadcrumbs from '../components/Breadcrumbs';
 import './ProductPage.css';
 
 import camionero1 from '../assets/camionero1.png'; 
@@ -240,9 +241,7 @@ const ProductPage = () => {
     <div className="page-wrapper">
 
       <main className="main-content">
-        <div className="breadcrumb">
-          Home &gt; Producto &gt; {producto.nombre}
-        </div>
+        <Breadcrumbs customLastSegment={producto.nombre} />
 
         <section className="product-detail">
           

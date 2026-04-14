@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Breadcrumbs from '../components/Breadcrumbs';
 import './FAQ.css';
 
 export default function FAQ() {
@@ -33,6 +34,7 @@ export default function FAQ() {
 
     return (
         <div className="faq-page">
+            <Breadcrumbs />
             <div className="faq-main-wrapper">
                 <div className="faq-header-content">
                     <h1 className="faq-creative-title">Preguntas Frecuentes</h1>

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
+import Breadcrumbs from '../components/Breadcrumbs';
 import './HistorialCompras.css';
 
 export default function HistorialCompras() {
@@ -117,6 +118,7 @@ export default function HistorialCompras() {
 
     return (
         <div className="historial-page">
+            <Breadcrumbs />
             <div className="historial-container">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
                     <h1 className="historial-title">Historial de Compras</h1>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CartContext } from '../context/CartContext'; 
+import Breadcrumbs from '../components/Breadcrumbs';
 import './Pago-tarjeta.css';
 import mercadoPagoImg from '../assets/mercadoPago.png';
 
@@ -55,7 +56,7 @@ const PagoTarjeta = () => {
     <div className="pago-tarjeta-page">
       
       <div className="checkout-container">
-        <nav className="breadcrumb">Home &gt; Carrito</nav>
+        <Breadcrumbs />
 
         <div className="stepper">
           <span className="step">Dirección</span>

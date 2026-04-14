@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import Breadcrumbs from '../components/Breadcrumbs';
 import './Favoritos.css';
 
 export default function Favoritos() {
@@ -104,6 +105,7 @@ export default function Favoritos() {
 
     return (
         <div className="favoritos-page">
+            <Breadcrumbs />
             <div className="favoritos-container">
                 <div className="favoritos-header">
                     <h1>Mis Favoritos</h1>

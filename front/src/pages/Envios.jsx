@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import Breadcrumbs from '../components/Breadcrumbs';
 import './Envios.css';
 
 export default function Envios() {
@@ -9,6 +10,7 @@ export default function Envios() {
 
     return (
         <div className="envios-page">
+            <Breadcrumbs />
             <div className="envios-container">
 
                 {/* Cabecera */}

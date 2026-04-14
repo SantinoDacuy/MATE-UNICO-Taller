@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import Breadcrumbs from '../components/Breadcrumbs';
 import './UserProfile.css';
 
 export default function UserProfile() {
@@ -148,6 +149,7 @@ export default function UserProfile() {
 
     return (
         <div className="profile-page">
+            <Breadcrumbs />
             <div className="profile-container">
                 <aside className="left-column">
                     <section className="user-info">

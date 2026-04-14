@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CartContext } from '../context/CartContext'; 
+import Breadcrumbs from '../components/Breadcrumbs';
 import './Cart.css';
 
 import imagenComodin from '../assets/camionero1.png';
@@ -55,8 +56,7 @@ const Carrito = () => {
 
   return (
     <div className="carrito-page">
-
-      <div className="page-path">Home &gt; Carrito</div>
+      <Breadcrumbs />
 
       <main className="carrito-contenedor">
         <h1 className="carrito-titulo">Tu carrito</h1>

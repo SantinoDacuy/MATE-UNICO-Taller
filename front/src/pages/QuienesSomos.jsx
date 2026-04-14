@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import Breadcrumbs from '../components/Breadcrumbs';
 import './QuienesSomos.css';
 import equipoImg from '../assets/QUIENESSOMOS.png'; // Usamos la imagen especificada
 
@@ -10,6 +11,7 @@ export default function QuienesSomos() {
 
     return (
         <div className="qs-page">
+            <Breadcrumbs />
             <div className="qs-container">
                 
                 {/* 1. Cabecera (Hero Text) */}

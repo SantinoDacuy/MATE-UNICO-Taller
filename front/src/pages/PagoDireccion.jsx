@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CartContext } from '../context/CartContext'; 
+import Breadcrumbs from '../components/Breadcrumbs';
 import './PagoDireccion.css';
 
 import imagenComodin from '../assets/camionero1.png';
@@ -158,7 +159,7 @@ export default function PagoDireccion() {
 
   return (
     <div className="checkout-page">
-      <div className="page-path" style={{paddingLeft: '50px', paddingTop: '20px'}}>Home &gt; Checkout</div>
+      <Breadcrumbs />
 
       <main className="checkout-contenedor-principal">
         <section className="checkout-columna-izquierda">

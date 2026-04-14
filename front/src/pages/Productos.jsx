@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { CartContext } from '../context/CartContext';
 import ProductCard from '../components/ProductCard';
+import Breadcrumbs from '../components/Breadcrumbs';
 import './Productos.css';
 
 import imagenComodin from '../assets/camionero1.png';
@@ -148,7 +149,7 @@ const Productos = () => {
 
   return (
     <div className="catalogo-page">
-      <div className="page-path" style={{paddingLeft: '50px', paddingTop: '20px'}}>Home &gt; Productos</div>
+      <Breadcrumbs />
 
       <main className="catalogo-layout">
         
