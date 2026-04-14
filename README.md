@@ -66,14 +66,19 @@ El proyecto se basa en una arquitectura de servicios desacoplados para garantiza
 cd back-auth
 npm install
 # Configurar archivo .env con credenciales de DB y MP
-npm run dev   
+npm run dev
+```
 
 ### 4. Sttrapi (CMS)
+```bash
 cd back
 npm install
 npm run develop
+```
 
 ### 5. Frontend
+```bash
 cd front
 npm install
 npm run dev
+```
