@@ -54,6 +54,9 @@ const Carrito = () => {
   // --- Detectar si hay productos sin stock en el carrito ---
   const hayProductosSinStock = cart.some(item => item.stock === 0 || item.cantidad > item.stock);
 
+  // Obtener nombres de productos sin stock para la sugerencia
+  const productosSinStock = cart.filter(item => item.stock === 0 || item.cantidad > item.stock);
+
   return (
     <div className="carrito-page">
       <Breadcrumbs />
@@ -132,6 +135,36 @@ const Carrito = () => {
             );
           })}
         </div>
+
+        {hayProductosSinStock && (
+          <div className="sugerencia-stock-container">
+            <div className="sugerencia-icon-wrapper">
+              <div className="icon-info-minimal"></div>
+            </div>
+            <div className="sugerencia-content">
+              <h3 className="sugerencia-titulo">Aviso de stock</h3>
+              <p className="sugerencia-texto">
+                {productosSinStock.length === 1 ? (
+                  <><strong>{productosSinStock[0].nombre}</strong> no está disponible.</>
+                ) : (
+                  <>Hay <strong>{productosSinStock.length} productos</strong> sin stock en tu carrito.</>
+                )}
+                {" "}Quítalos para avanzar con tu pedido.
+              </p>
+            </div>
+            <div className="sugerencia-button-wrapper">
+              <button 
+                className="btn-sugerencia-accion"
+                onClick={() => {
+                  productosSinStock.forEach(p => removeFromCart(p.id, p.color, p.grabado));
+                  showToast('Carrito actualizado');
+                }}
+              >
+                Actualizar carrito
+              </button>
+            </div>
+          </div>
+        )}
 
         {cart.length > 0 && (
           <div className="confirmar-contenedor">
