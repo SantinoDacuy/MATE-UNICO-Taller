@@ -55,6 +55,11 @@ a.mu-brand span:last-of-type { color: #caa14e !important; }
 /* hide badge when count is zero (use data-count attribute) */
 .mu-badge[data-count="0"]{ display:none !important; }
 
+.mu-heart:hover svg {
+  color: #ff4757 !important;
+  filter: drop-shadow(0 0 8px rgba(255, 71, 87, 0.4));
+}
+
 /* filtro: enlace de texto en el header, igual al estilo de "Ingresar" (gris apagado) */
 .mu-filter-link{
   background:transparent;
