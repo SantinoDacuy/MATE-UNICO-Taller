@@ -1,0 +1,155 @@
+/* ===== TOAST NOTIFICATIONS ===== */
+
+.mu-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  min-width: 280px;
+  max-width: 380px;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+  animation: slideInToast 0.3s ease-out;
+  z-index: 9999;
+}
+
+@keyframes slideInToast {
+  from {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.mu-toast-container {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.mu-toast-header {
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  color: #fff;
+  text-align: center;
+  border-bottom: 2px solid;
+}
+
+.mu-toast-content {
+  padding: 14px 16px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  background: #ffffff;
+  color: #1a1a1a;
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mu-toast-icon {
+  font-size: 18px;
+  font-weight: bold;
+  flex-shrink: 0;
+  min-width: 24px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.mu-toast-message {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: #1a1a1a;
+  flex: 1;
+}
+
+/* ===== TOAST VARIANTS ===== */
+
+/* Success - Verde */
+.mu-toast-success {
+  border-left: 4px solid #4caf50;
+}
+
+.mu-toast-success .mu-toast-header {
+  border-bottom-color: #4caf50;
+  background: linear-gradient(135deg, #2d5016 0%, #3d6b1f 100%);
+}
+
+.mu-toast-icon-success {
+  color: #4caf50;
+}
+
+/* Error - Rojo */
+.mu-toast-error {
+  border-left: 4px solid #f44336;
+}
+
+.mu-toast-error .mu-toast-header {
+  border-bottom-color: #f44336;
+  background: linear-gradient(135deg, #5a1a1a 0%, #7a2020 100%);
+}
+
+.mu-toast-icon-error {
+  color: #f44336;
+}
+
+/* Warning - Naranja */
+.mu-toast-warning {
+  border-left: 4px solid #ff9800;
+}
+
+.mu-toast-warning .mu-toast-header {
+  border-bottom-color: #ff9800;
+  background: linear-gradient(135deg, #663300 0%, #854400 100%);
+}
+
+.mu-toast-icon-warning {
+  color: #ff9800;
+}
+
+/* Info - Azul */
+.mu-toast-info {
+  border-left: 4px solid #2196f3;
+}
+
+.mu-toast-info .mu-toast-header {
+  border-bottom-color: #2196f3;
+  background: linear-gradient(135deg, #1a3a52 0%, #1e4d6b 100%);
+}
+
+.mu-toast-icon-info {
+  color: #2196f3;
+}
+
+/* ===== RESPONSIVE ===== */
+
+@media (max-width: 480px) {
+  .mu-toast {
+    left: 12px;
+    right: 12px;
+    min-width: unset;
+    max-width: unset;
+  }
+
+  .mu-toast-content {
+    padding: 12px 14px;
+    min-height: 48px;
+  }
+
+  .mu-toast-message {
+    font-size: 13px;
+  }
+}

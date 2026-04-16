@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CartContext } from '../context/CartContext'; 
+import Toast from '../components/Toast';
 import Breadcrumbs from '../components/Breadcrumbs';
 import './PagoDireccion.css';
 
@@ -25,8 +26,8 @@ export default function PagoDireccion() {
   const [ciudadSeleccionada, setCiudadSeleccionada] = useState('');
 
   const [coupon, setCoupon] = useState('');
-  const [appliedCuponId, setAppliedCuponId] = useState(null); // Guardamos el ID del cupón de la DB
-  const [toast, setToast] = useState(null);
+  const [appliedCuponId, setAppliedCuponId] = useState(null);
+  const [toastData, setToastData] = useState({ message: '', type: 'info', visible: false });
   const [validando, setValidando] = useState(false);
   const envio = 4000;
   const grabado = cart.reduce((acc, item) => (item.grabado && item.grabado !== 'Sin grabado' ? acc + 3000 : acc), 0);
@@ -66,10 +67,13 @@ export default function PagoDireccion() {
     syncUser();
   }, [navigate]);
 
+  const showToast = (msg, type = 'info') => setToastData({ message: msg, type, visible: true });
+  const closeToast = () => setToastData({ ...toastData, visible: false });
+
   // --- LÓGICA DE CUPONES DINÁMICA CON LA DB ---
   const applyCoupon = async () => {
     const code = coupon.trim().toUpperCase();
-    if (!code) return setToast('Ingresá un código');
+    if (!code) return showToast('Ingresá un código', 'warning');
 
     try {
       const res = await fetch(`http://localhost:3001/api/cupones/${code}`);
@@ -86,14 +90,14 @@ export default function PagoDireccion() {
 
         setDescuento(montoADescuentar);
         setAppliedCuponId(data.id_cupon);
-        setToast(`¡Cupón aplicado! -$${montoADescuentar.toLocaleString()}`);
+        showToast(`¡Cupón aplicado! -$${montoADescuentar.toLocaleString()}`, 'success');
       } else {
         setDescuento(0);
         setAppliedCuponId(null);
-        setToast(data.message || 'Cupón no válido ❌');
+        showToast(data.message || 'Cupón no válido', 'error');
       }
     } catch (err) {
-      setToast('Error al validar cupón');
+      showToast('Error al validar cupón', 'error');
     }
     setCoupon('');
   };
@@ -110,9 +114,9 @@ export default function PagoDireccion() {
       for (const item of cart) {
         if (item.cantidad > item.stock) {
           if (item.stock === 0) {
-            setToast(`❌ "${item.nombre}" ya no tiene stock`);
+            showToast(`"${item.nombre}" ya no tiene stock`, 'error');
           } else {
-            setToast(`❌ "${item.nombre}" solo quedan ${item.stock} unidades (tu carrito tiene ${item.cantidad})`);
+            showToast(`"${item.nombre}" solo quedan ${item.stock} unidades (tu carrito tiene ${item.cantidad})`, 'error');
           }
           setValidando(false);
           return false;
@@ -120,12 +124,12 @@ export default function PagoDireccion() {
       }
       
       // Si llegamos aquí, todo el stock está disponible
-      setToast('✅ Stock verificado! Continuando...');
+      showToast('Stock verificado! Continuando...', 'success');
       setValidando(false);
       return true;
     } catch (error) {
       console.error('Error validando stock:', error);
-      setToast('Error al verificar disponibilidad');
+      showToast('Error al verificar disponibilidad', 'error');
       setValidando(false);
       return false;
     }
@@ -133,7 +137,7 @@ export default function PagoDireccion() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (cart.length === 0) return setToast('El carrito está vacío');
+    if (cart.length === 0) return showToast('El carrito está vacío', 'warning');
     
     // Validar stock ANTES de continuar
     const stockOK = await validateStock();
@@ -148,12 +152,6 @@ export default function PagoDireccion() {
     // Pequeño delay para que vea el toast de éxito
     setTimeout(() => navigate('/pago-envio'), 500);
   };
-
-  useEffect(() => {
-    if (!toast) return;
-    const id = setTimeout(() => setToast(null), 2500);
-    return () => clearTimeout(id);
-  }, [toast]);
 
   if (!autorizado) return null;
 
@@ -182,7 +180,7 @@ export default function PagoDireccion() {
           <div className="cupon-descuento">
             <input value={coupon} onChange={e => setCoupon(e.target.value)} type="text" placeholder="Cupón de descuento" disabled={appliedCuponId !== null} />
             {appliedCuponId ? (
-              <button type="button" className="btn-agregar-cupon" style={{background: '#d32f2f', color: '#fff'}} onClick={() => { setDescuento(0); setAppliedCuponId(null); setCoupon(''); setToast('Cupón removido'); }}>Quitar ✕</button>
+              <button type="button" className="btn-agregar-cupon" style={{background: '#d32f2f', color: '#fff'}} onClick={() => { setDescuento(0); setAppliedCuponId(null); setCoupon(''); showToast('Cupón removido', 'info'); }}>Quitar ✕</button>
             ) : (
               <button type="button" className="btn-agregar-cupon" onClick={applyCoupon}>Agregar</button>
             )}
@@ -225,7 +223,12 @@ export default function PagoDireccion() {
           </form>
         </section>
       </main>
-      {toast && <div className="checkout-toast">{toast}</div>}
+      <Toast 
+        message={toastData.message} 
+        type={toastData.type} 
+        visible={toastData.visible} 
+        onClose={closeToast} 
+      />
     </div>
   );
 }

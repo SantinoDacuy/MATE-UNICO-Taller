@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import Toast from '../components/Toast';
 import Breadcrumbs from '../components/Breadcrumbs';
 import './UserProfile.css';
 
@@ -128,18 +129,18 @@ export default function UserProfile() {
                 body: JSON.stringify(form)
             });
             if (res.ok) {
-                alert('¡Información actualizada correctamente! 🧉');
+                showToast('¡Información actualizada correctamente! 🤑', 'success');
             } else {
                 const errorData = await res.json().catch(() => ({}));
                 if (res.status === 401) {
-                    alert('Error 401: Tu sesión no ha vinculado con la base de datos. Por favor, cierra sesión y vuelve a entrar.');
+                    showToast('Error 401: Tu sesión no ha vinculado con la base de datos. Por favor, cierra sesión y vuelve a entrar.', 'error');
                 } else {
-                    alert(`Error ${res.status} al guardar: ${errorData.error || 'Error desconocido'}`);
+                    showToast(`Error ${res.status} al guardar: ${errorData.error || 'Error desconocido'}`, 'error');
                 }
             }
         } catch (err) { 
             console.error('Error saving profile:', err);
-            alert('Error crítico de red al guardar. Verifica que el servidor (puerto 3001) esté corriendo.'); 
+            showToast('Error crítico de red al guardar. Verifica que el servidor (puerto 3001) esté corriendo.', 'error');
         }
     }
 
@@ -311,6 +312,12 @@ export default function UserProfile() {
                     </form>
                 </main>
             </div>
+            <Toast 
+              message={toastData.message} 
+              type={toastData.type} 
+              visible={toastData.visible} 
+              onClose={closeToast} 
+            />
         </div>
     );
 }

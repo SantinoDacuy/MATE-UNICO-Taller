@@ -2,6 +2,7 @@ import React, { useEffect, useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CartContext } from '../context/CartContext'; 
 import Breadcrumbs from '../components/Breadcrumbs';
+import Toast from '../components/Toast';
 import './Cart.css';
 
 import imagenComodin from '../assets/camionero1.png';
@@ -10,14 +11,7 @@ const Carrito = () => {
   const navigate = useNavigate();
   const { cart, removeFromCart, addToCart, totalItems, totalPrice, updateStockFromBackend } = useContext(CartContext);
 
-  const [toast, setToast] = useState(null);
-
-  // Mensaje flotante
-  useEffect(() => {
-    if (!toast) return;
-    const id = setTimeout(() => setToast(null), 2000);
-    return () => clearTimeout(id);
-  }, [toast]);
+  const [toastData, setToastData] = useState({ message: '', type: 'info', visible: false });
 
   // --- REFRESCAR STOCK AL CARGAR EL CARRITO ---
   useEffect(() => {
@@ -26,7 +20,8 @@ const Carrito = () => {
     }
   }, []); // Solo ejecutar al montar el componente
 
-  const showToast = (msg) => setToast(msg);
+  const showToast = (msg, type = 'info') => setToastData({ message: msg, type, visible: true });
+  const closeToast = () => setToastData({ ...toastData, visible: false });
 
   const handleEliminar = (producto) => {
     removeFromCart(producto.id, producto.color, producto.grabado);
@@ -157,7 +152,7 @@ const Carrito = () => {
                 className="btn-sugerencia-accion"
                 onClick={() => {
                   productosSinStock.forEach(p => removeFromCart(p.id, p.color, p.grabado));
-                  showToast('Carrito actualizado');
+                  showToast('Carrito actualizado', 'success');
                 }}
               >
                 Actualizar carrito
@@ -189,7 +184,12 @@ const Carrito = () => {
         )}
       </main>
 
-      {toast && <div className="cart-toast" role="status">{toast}</div>}
+      <Toast 
+        message={toastData.message} 
+        type={toastData.type} 
+        visible={toastData.visible} 
+        onClose={closeToast} 
+      />
     </div>
   );
 };

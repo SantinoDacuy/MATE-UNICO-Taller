@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Heart } from 'lucide-react';
 import { CartContext } from '../context/CartContext';
 import ReviewsSection from '../components/ReviewsSection';
+import Toast from '../components/Toast';
 import Breadcrumbs from '../components/Breadcrumbs';
 import './ProductPage.css';
 
@@ -31,6 +32,10 @@ const ProductPage = () => {
   const [isFavorite, setIsFavorite] = useState(false);
   const [similarProducts, setSimilarProducts] = useState([]);
   const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
+  const [toastData, setToastData] = useState({ message: '', type: 'info', visible: false });
+
+  const showToast = (msg, type = 'info') => setToastData({ message: msg, type, visible: true });
+  const closeToast = () => setToastData({ ...toastData, visible: false });
 
   const FAVORITES_STORAGE_KEY = 'mateUnicoFavorites';
 
@@ -182,10 +187,10 @@ const ProductPage = () => {
           imagen: producto.imagenes && producto.imagenes.length > 0 ? `http://localhost:1337${producto.imagenes[0].url}` : ''
         }
       ];
-      alert('¡Agregado a favoritos!');
+      showToast('¡Agregado a favoritos!', 'success');
     } else {
       updated = favoritos.filter((p) => String(p.documentId) !== idCurrent && String(p.id) !== idCurrent);
-      alert('Quitado de favoritos');
+      showToast('Quitado de favoritos', 'info');
     }
 
     saveFavorites(updated);
@@ -206,19 +211,19 @@ const ProductPage = () => {
   const handleAddToCart = () => {
     // Si escribió algo pero se olvidó de tocar "Agregar", le avisamos!
     if (producto.grabado && grabado.trim() !== '' && !grabadoConfirmado) {
-      alert("⚠️ Escribiste un grabado pero no tocaste el botón 'Agregar'. Confírmalo antes de añadir al carrito.");
+      showToast("⚠️ Escribiste un grabado pero no tocaste el botón 'Agregar'. Confírmalo antes de añadir al carrito.", 'warning');
       return;
     }
 
     // Validar disponibilidad de stock
     const stockDisponible = producto.stock || 0;
     if (stockDisponible <= 0) {
-      alert("😥 Lo sentimos, este producto está sin stock en este momento.");
+      showToast("Lo sentimos, este producto está sin stock en este momento.", 'error');
       return;
     }
     
     if (quantity > stockDisponible) {
-      alert(`⚠️ Stock limitado. Solo hay ${stockDisponible} unidades disponibles.`);
+      showToast(`Stock limitado. Solo hay ${stockDisponible} unidades disponibles.`, 'warning');
       setQuantity(stockDisponible);
       return;
     }
@@ -231,7 +236,7 @@ const ProductPage = () => {
     };
 
     addToCart(productoParaCarrito, quantity, selectedColor, textoGrabado);
-    alert(`¡Mate agregado al carrito! 🛍️\nTotal: $${precioTotal.toLocaleString('es-AR')}`);
+    showToast(`¡Mate agregado al carrito!\nTotal: $${precioTotal.toLocaleString('es-AR')}`, 'success');
   };
 
   if (cargando) return <div style={{textAlign: 'center', marginTop: '100px'}}><h2>Calentando el agua para tu mate... 🧉</h2></div>;
@@ -401,11 +406,11 @@ const ProductPage = () => {
                   className="btn-dark-small" 
                   onClick={() => {
                     if (grabado.trim() === '') {
-                      alert("⚠️ Por favor, escribí lo que querés grabar antes de confirmar.");
+                      showToast("Por favor, escribí lo que querés grabar antes de confirmar.", 'warning');
                       return;
                     }
                     setGrabadoConfirmado(true);
-                    alert(`✅ Grabado "${grabado}" confirmado (+ $3.000).`);
+                    showToast(`Grabado "${grabado}" confirmado (+ $3.000).`, 'success');
                   }}
                   style={{ 
                     flexShrink: 0, 
@@ -491,6 +496,12 @@ const ProductPage = () => {
           </div>
         </section>
       </main>
+      <Toast 
+        message={toastData.message} 
+        type={toastData.type} 
+        visible={toastData.visible} 
+        onClose={closeToast} 
+      />
     </div>
   );
 };

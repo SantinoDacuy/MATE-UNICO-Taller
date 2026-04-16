@@ -1,10 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import Toast from './Toast';
 import './styles.css';
 import logoImage from '../assets/logo.png';
 
 const Footer = () => {
   const location = useLocation();
+  const [toastData, setToastData] = useState({ message: '', type: 'info', visible: false });
+
+  const showToast = (msg, type = 'info') => setToastData({ message: msg, type, visible: true });
+  const closeToast = () => setToastData({ ...toastData, visible: false });
   
   // Mostrar footer en todas las páginas, incluso en login, para consistencia con header
   // if (location.pathname === '/login') return null;
@@ -59,7 +64,7 @@ const Footer = () => {
         <div className="mu-footer__newsletter-col">
           <h4>Recibí novedades</h4>
           <p className="mu-small">Suscribite y te avisamos sobre lanzamientos y ofertas.</p>
-          <form className="mu-newsletter" onSubmit={(e) => { e.preventDefault(); alert('Gracias por suscribirte'); }}>
+          <form className="mu-newsletter" onSubmit={(e) => { e.preventDefault(); showToast('Gracias por suscribirte', 'success'); }}>
             <label htmlFor="mu-news-email" className="sr-only">Email</label>
             <input id="mu-news-email" className="mu-news-input" type="email" placeholder="tu@correo.com" required />
             <button className="mu-news-button" type="submit">Suscribirse</button>
@@ -70,6 +75,12 @@ const Footer = () => {
       <div className="mu-footer__bottom">
         <div className="mu-footer__copyright">© Mate Único — Todos los derechos reservados.</div>
       </div>
+      <Toast 
+        message={toastData.message} 
+        type={toastData.type} 
+        visible={toastData.visible} 
+        onClose={closeToast} 
+      />
     </footer>
   );
 };

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CartContext } from '../context/CartContext'; 
+import Toast from '../components/Toast';
 import Breadcrumbs from '../components/Breadcrumbs';
 import './Pago-tarjeta.css';
 import mercadoPagoImg from '../assets/mercadoPago.png';
@@ -43,12 +44,11 @@ const PagoTarjeta = () => {
         // Redirigir a Mercado Pago
         window.location.href = data.init_point;
       } else {
-        // Ahora el alert te va a decir EXACTAMENTE qué falló en Postgres
-        alert("Error: " + (data.error || "No se pudo registrar la compra"));
+        showToast("Error: " + (data.error || "No se pudo registrar la compra"), 'error');
       }
     } catch (error) {
       console.error("Error:", error);
-      alert("Error de conexión con el servidor.");
+      showToast("Error de conexión con el servidor.", 'error');
     }
   };
 
@@ -90,6 +90,12 @@ const PagoTarjeta = () => {
         <div className="leaf-decoration right"></div>
       </div>
       
+      <Toast 
+        message={toastData.message} 
+        type={toastData.type} 
+        visible={toastData.visible} 
+        onClose={closeToast} 
+      />
     </div>
   );
 };
