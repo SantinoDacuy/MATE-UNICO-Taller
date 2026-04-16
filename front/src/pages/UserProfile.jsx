@@ -25,6 +25,12 @@ export default function UserProfile() {
         picture: ''
     });
 
+    // Estado para Toast
+    const [toastData, setToastData] = useState({ message: '', type: 'info', visible: false });
+
+    const showToast = (msg, type = 'info') => setToastData({ message: msg, type, visible: true });
+    const closeToast = () => setToastData({ ...toastData, visible: false });
+
     // 1. CARGAMOS PROVINCIAS
     useEffect(() => {
         fetch('https://apis.datos.gob.ar/georef/api/provincias?campos=id,nombre')

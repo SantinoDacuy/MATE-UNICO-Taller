@@ -170,7 +170,7 @@
     background-color: #333;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
     .favoritos-header {
         flex-direction: column;
         align-items: flex-start;
@@ -178,7 +178,79 @@
     }
     
     .favoritos-grid {
-        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
         gap: 20px;
+        padding: 0 15px;
+    }
+    
+    .favoritos-title {
+        font-size: 1.8rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .favoritos-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 0 15px;
+    }
+    
+    .favoritos-grid {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 15px;
+        padding: 0 12px;
+    }
+    
+    .favoritos-title {
+        font-size: 1.5rem;
+    }
+    
+    .product-card {
+        border-radius: 8px;
+    }
+}
+
+@media (max-width: 600px) {
+    .favoritos-header {
+        padding: 0 12px;
+    }
+    
+    .favoritos-grid {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 12px;
+        padding: 0 10px;
+    }
+    
+    .favoritos-title {
+        font-size: 1.3rem;
+    }
+    
+    .product-card {
+        padding: 0;
+    }
+    
+    .card-info {
+        padding: 10px;
+    }
+    
+    .card-product-name {
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .favoritos-header {
+        padding: 0 10px;
+    }
+    
+    .favoritos-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        padding: 0 8px;
+    }
+    
+    .favoritos-title {
+        font-size: 1.1rem;
     }
 }

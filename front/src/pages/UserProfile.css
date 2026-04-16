@@ -443,6 +443,24 @@ body {
     transform: translateX(0);
   }
 }
+@media (max-width: 900px) {
+  .profile-container {
+    grid-template-columns: 280px 1fr;
+    gap: 2rem;
+    padding: 1.5rem 1rem;
+  }
+
+  .left-column {
+    position: sticky;
+    top: 100px;
+    height: fit-content;
+  }
+
+  .banner-img {
+    height: 140px;
+  }
+}
+
 @media (max-width: 768px) {
   .profile-container {
     grid-template-columns: 1fr;
@@ -452,6 +470,7 @@ body {
 
   .left-column {
     order: 2;
+    position: static;
   }
 
   .right-column {
@@ -479,6 +498,15 @@ body {
     padding: 1rem;
   }
 
+  .user-info h2 {
+    font-size: 1.3rem;
+  }
+
+  .input-group input,
+  .btn-save {
+    font-size: 0.95rem;
+  }
+
   /* Mobile hover effects - disable transforms */
   .user-info:hover,
   .right-column:hover,
@@ -489,6 +517,105 @@ body {
 
   .profile-pic-circle:hover {
     transform: none;
+  }
+}
+
+/* Mobile Small (600px and below) */
+@media (max-width: 600px) {
+  .profile-page {
+    padding: 0;
+  }
+
+  .profile-container {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding: 0.75rem 0.5rem;
+    max-width: 100%;
+  }
+
+  .banner-img {
+    height: 100px;
+  }
+
+  .profile-pic-circle {
+    width: 60px;
+    height: 60px;
+    font-size: 2rem;
+  }
+
+  .user-info {
+    padding: 1rem;
+  }
+
+  .user-info h2 {
+    font-size: 1.1rem;
+  }
+
+  .form-grid {
+    gap: 10px;
+  }
+
+  .input-group label {
+    font-size: 0.85rem;
+  }
+
+  .input-group input,
+  .btn-save {
+    font-size: 0.9rem;
+    padding: 8px;
+  }
+
+  .order-item,
+  .favorite-card {
+    padding: 0.65rem;
+  }
+
+  .right-column {
+    padding: 0.75rem;
+  }
+
+  .section-title {
+    font-size: 1.1rem;
+    margin-bottom: 12px;
+  }
+}
+
+/* Extra Small (480px and below) */
+@media (max-width: 480px) {
+  .profile-container {
+    padding: 0.5rem 0.4rem;
+  }
+
+  .banner-img {
+    height: 80px;
+  }
+
+  .profile-pic-circle {
+    width: 50px;
+    height: 50px;
+    font-size: 1.8rem;
+  }
+
+  .user-info {
+    padding: 0.75rem;
+  }
+
+  .user-info h2 {
+    font-size: 1rem;
+  }
+
+  .input-group label {
+    font-size: 0.8rem;
+  }
+
+  .input-group input,
+  .btn-save {
+    font-size: 0.85rem;
+    padding: 6px;
+  }
+
+  .section-title {
+    font-size: 1rem;
   }
 }
 

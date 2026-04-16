@@ -162,32 +162,129 @@
 }
 
 /* RESPONSIVE */
-@media (max-width: 768px) {
+@media (max-width: 900px) {
     .qs-page {
-        padding: 50px 20px;
+        padding: 50px 30px;
     }
+
     .qs-title {
-        font-size: 2.5rem;
+        font-size: 3rem;
     }
-    .qs-subtitle {
-        font-size: 1.1rem;
-    }
+
     .qs-image-wrapper {
         aspect-ratio: 1/1;
+    }
+}
+
+@media (max-width: 768px) {
+    .qs-page {
+        padding: 40px 20px;
+    }
+
+    .qs-title {
+        font-size: 2.2rem;
+    }
+
+    .qs-subtitle {
+        font-size: 1rem;
+    }
+
+    .qs-image-wrapper {
+        aspect-ratio: 1/1;
+        margin-bottom: 40px;
+    }
+
+    .qs-story-section {
         margin-bottom: 50px;
     }
-    .qs-story-section {
-        margin-bottom: 60px;
-    }
+
     .qs-founders {
-        font-size: 1.8rem;
+        font-size: 1.6rem;
     }
+
     .qs-story-text p {
-        font-size: 1.05rem;
+        font-size: 1rem;
     }
+
     .qs-values-grid {
         grid-template-columns: 1fr;
-        gap: 20px;
-        padding-top: 40px;
+        gap: 16px;
+        padding-top: 30px;
+    }
+
+    .qs-value-box {
+        padding: 20px;
+    }
+}
+
+@media (max-width: 600px) {
+    .qs-page {
+        padding: 30px 16px;
+    }
+
+    .qs-title {
+        font-size: 1.8rem;
+    }
+
+    .qs-subtitle {
+        font-size: 0.95rem;
+    }
+
+    .qs-image-wrapper {
+        margin-bottom: 30px;
+    }
+
+    .qs-story-section {
+        margin-bottom: 40px;
+    }
+
+    .qs-founders {
+        font-size: 1.4rem;
+    }
+
+    .qs-story-text p {
+        font-size: 0.95rem;
+    }
+
+    .qs-value-box {
+        padding: 16px;
+    }
+
+    .qs-value-title {
+        font-size: 1.1rem;
+    }
+
+    .qs-value-description {
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .qs-page {
+        padding: 24px 12px;
+    }
+
+    .qs-title {
+        font-size: 1.5rem;
+    }
+
+    .qs-subtitle {
+        font-size: 0.9rem;
+    }
+
+    .qs-story-section {
+        margin-bottom: 30px;
+    }
+
+    .qs-founders {
+        font-size: 1.2rem;
+    }
+
+    .qs-value-box {
+        padding: 14px;
+    }
+
+    .qs-value-title {
+        font-size: 1rem;
     }
 }

@@ -65,7 +65,7 @@ const Carrito = () => {
             <div className="empty-cart">
               <p>Tu carrito está vacío. 🧉</p>
               <button 
-                onClick={() => navigate('/')} 
+                onClick={() => navigate('/productos')} 
                 style={{marginTop:'20px', padding:'10px 20px', cursor:'pointer', backgroundColor:'#080808', color:'white', border:'none', borderRadius:'5px'}}
               >
                 Ver Mates

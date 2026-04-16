@@ -291,9 +291,175 @@ body {
 .card-item{ background:#fff; }
 
 @media(max-width:900px){
-    .checkout-contenedor-principal{ grid-template-columns: 1fr; padding:0 20px 40px; }
-    .checkout-columna-izquierda{ border-right:0; padding-right:0; }
-    .card-resumen{ position:static; margin-top:20px; }
+    .checkout-contenedor-principal{ 
+        grid-template-columns: 1fr; 
+        padding:0 20px 40px; 
+    }
+    .checkout-columna-izquierda{ 
+        border-right:0; 
+        padding-right:0; 
+    }
+    .card-resumen{ 
+        position:static; 
+        margin-top:20px; 
+    }
+    
+    .checkout-form {
+        gap: 15px;
+    }
+    
+    .form-row {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .form-group {
+        flex: 1;
+    }
+}
+
+/* Mobile (768px and below) */
+@media (max-width: 768px) {
+    .checkout-contenedor-principal { 
+        grid-template-columns: 1fr; 
+        padding: 0 15px 30px; 
+    }
+    
+    .checkout-columna-izquierda { 
+        border-right: 0; 
+        padding-right: 0; 
+    }
+    
+    .checkout-titulo { 
+        font-size: 1.5rem; 
+        margin-bottom: 20px; 
+    }
+    
+    .form-group {
+        margin-bottom: 12px;
+    }
+    
+    .form-group label {
+        font-size: 0.9rem;
+    }
+    
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        font-size: 0.95rem;
+        padding: 10px;
+    }
+    
+    .card-resumen {
+        position: static;
+        margin-top: 15px;
+        padding: 15px;
+    }
+    
+    .resumen-titulo {
+        font-size: 1.2rem;
+    }
+    
+    .resumen-item {
+        font-size: 0.9rem;
+    }
+}
+
+/* Mobile Small (600px and below) */
+@media (max-width: 600px) {
+    .checkout-contenedor-principal {
+        padding: 0 12px 25px;
+        gap: 15px;
+    }
+    
+    .checkout-titulo {
+        font-size: 1.3rem;
+        margin-bottom: 15px;
+    }
+    
+    .form-group {
+        margin-bottom: 10px;
+    }
+    
+    .form-group label {
+        font-size: 0.85rem;
+    }
+    
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        font-size: 0.9rem;
+        padding: 8px;
+    }
+    
+    .form-row {
+        flex-direction: column;
+    }
+    
+    .cupon-section {
+        padding: 12px;
+    }
+    
+    .cupon-input,
+    .btn-aplicar-cupon {
+        font-size: 0.9rem;
+        padding: 10px;
+    }
+    
+    .card-resumen {
+        padding: 12px;
+    }
+    
+    .resumen-titulo {
+        font-size: 1.1rem;
+        margin-bottom: 10px;
+    }
+    
+    .resumen-item,
+    .resumen-total {
+        font-size: 0.85rem;
+    }
+    
+    .btn-siguiente {
+        width: 100%;
+        padding: 12px;
+        font-size: 0.95rem;
+    }
+}
+
+/* Extra Small (480px and below) */
+@media (max-width: 480px) {
+    .checkout-contenedor-principal {
+        padding: 0 10px 20px;
+    }
+    
+    .checkout-titulo {
+        font-size: 1.15rem;
+    }
+    
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        font-size: 0.85rem;
+        padding: 6px;
+    }
+    
+    .form-group label {
+        font-size: 0.8rem;
+    }
+    
+    .card-resumen {
+        padding: 10px;
+    }
+    
+    .resumen-titulo {
+        font-size: 0.95rem;
+    }
+    
+    .btn-siguiente {
+        padding: 10px;
+        font-size: 0.9rem;
+    }
 }
 
 /* Imagen de Fondo (Monstera) */

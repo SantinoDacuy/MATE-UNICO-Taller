@@ -411,25 +411,213 @@ body {
     100% { transform: scale(1); box-shadow: 0 4px 15px rgba(0, 123, 255, 0.15); }
 }
 
-/* Responsividad para MateBot */
-@media (max-width: 600px) {
+/* Responsividad para MateBot y Cart */
+/* Tablet (900px and below) */
+@media (max-width: 900px) {
+    .cart-container {
+        padding: 20px 20px 60px;
+    }
+    
+    .cart-layout {
+        gap: 25px;
+    }
+    
+    .cart-items-section {
+        flex: 1;
+    }
+    
+    .cart-summary {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+}
+
+/* Mobile (768px and below) */
+@media (max-width: 768px) {
+    .cart-container {
+        padding: 15px 15px 50px;
+    }
+    
+    .cart-layout {
+        flex-direction: column;
+        gap: 20px;
+    }
+    
+    .cart-title {
+        font-size: 1.8rem;
+    }
+    
+    .cart-item {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .cart-item-img {
+        width: 100%;
+        height: 200px;
+    }
+    
+    .cart-item-details {
+        width: 100%;
+    }
+    
+    .cart-summary {
+        width: 100%;
+    }
+    
     .matebot-asistente-container {
         flex-direction: column;
         align-items: flex-start;
-        padding: 20px;
-        text-align: left;
+        padding: 16px;
     }
     
     .matebot-avatar-wrapper {
-        width: 50px;
-        height: 50px;
-        font-size: 24px;
+        width: 48px;
+        height: 48px;
+        font-size: 22px;
         margin-bottom: 10px;
     }
 
     .btn-matebot-accion {
         width: 100%;
         justify-content: center;
+    }
+}
+
+/* Mobile Small (600px and below) */
+@media (max-width: 600px) {
+    .cart-container {
+        padding: 12px 12px 40px;
+    }
+    
+    .cart-title {
+        font-size: 1.5rem;
+        margin-bottom: 15px;
+    }
+    
+    .cart-item {
+        flex-direction: column;
+        gap: 12px;
+        padding: 12px;
+    }
+    
+    .cart-item-img {
+        width: 100%;
+        height: 150px;
+    }
+    
+    .cart-item-details {
+        width: 100%;
+    }
+    
+    .cart-item-color,
+    .cart-item-grabado,
+    .cart-item-price {
+        font-size: 0.85rem;
+    }
+    
+    .cantidad-box {
+        gap: 8px;
+    }
+    
+    .cantidad-box button {
+        padding: 4px 8px;
+        font-size: 0.85rem;
+    }
+    
+    .cantidad-box input {
+        width: 40px;
+        font-size: 0.85rem;
+    }
+    
+    .btn-eliminar {
+        padding: 8px 12px;
+        font-size: 0.8rem;
+    }
+    
+    .cart-summary {
+        padding: 16px;
+    }
+    
+    .summary-row {
+        font-size: 0.9rem;
+    }
+    
+    .summary-total {
+        font-size: 1.2rem;
+    }
+    
+    .btn-continuar-comprando,
+    .btn-proceder-pago {
+        padding: 12px 16px;
+        font-size: 0.9rem;
+    }
+    
+    .matebot-asistente-container {
+        padding: 14px;
+    }
+    
+    .matebot-avatar-wrapper {
+        width: 44px;
+        height: 44px;
+        font-size: 20px;
+    }
+    
+    .footer-web {
+        padding: 20px 16px;
+    }
+}
+
+/* Extra Small (480px and below) */
+@media (max-width: 480px) {
+    .cart-container {
+        padding: 10px 10px 30px;
+    }
+    
+    .cart-title {
+        font-size: 1.3rem;
+    }
+    
+    .cart-item {
+        gap: 10px;
+        padding: 10px;
+    }
+    
+    .cart-item-img {
+        height: 120px;
+    }
+    
+    .cart-item-color,
+    .cart-item-grabado,
+    .cart-item-price {
+        font-size: 0.8rem;
+    }
+    
+    .cantidad-box input {
+        width: 35px;
+    }
+    
+    .btn-eliminar {
+        padding: 6px 10px;
+        font-size: 0.75rem;
+    }
+    
+    .cart-summary {
+        padding: 14px;
+    }
+    
+    .summary-row {
+        font-size: 0.85rem;
+    }
+    
+    .summary-total {
+        font-size: 1rem;
+    }
+    
+    .btn-continuar-comprando,
+    .btn-proceder-pago {
+        padding: 10px 14px;
+        font-size: 0.85rem;
     }
 }
 

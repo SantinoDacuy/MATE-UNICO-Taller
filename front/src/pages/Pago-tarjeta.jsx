@@ -12,6 +12,12 @@ const PagoTarjeta = () => {
   // Traemos el carrito y la función para vaciarlo del contexto
   const { cart, totalItems, clearCart } = useContext(CartContext);
 
+  // Estado para Toast
+  const [toastData, setToastData] = useState({ message: '', type: 'info', visible: false });
+
+  const showToast = (msg, type = 'info') => setToastData({ message: msg, type, visible: true });
+  const closeToast = () => setToastData({ ...toastData, visible: false });
+
   // =========================================================
   // 4. FUNCIÓN PARA PROCESAR LA VENTA REAL EN DB
   // =========================================================
