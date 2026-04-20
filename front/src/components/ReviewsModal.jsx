@@ -69,7 +69,7 @@ export default function ReviewsModal({ reviews, averageRating, onClose }) {
                             <div className="modal-review-header">
                                 <div>
                                     <h4 className="modal-review-title">{review.titulo}</h4>
-                                    <p className="modal-review-author">{review.usuario_nombre || 'Usuario'}</p>
+                                    <p className="modal-review-author">Usuario Anónimo</p>
                                     <p className="modal-review-date">
                                         {new Date(review.fecha_creacion).toLocaleDateString('es-AR', {
                                             year: 'numeric',

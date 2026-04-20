@@ -20,7 +20,7 @@ const ProductPage = () => {
   
   const [quantity, setQuantity] = useState(1);
   const [grabado, setGrabado] = useState(''); 
-  const [grabadoConfirmado, setGrabadoConfirmado] = useState(false); // NUEVO: Controla si ya apretó el botón
+  const [grabadoConfirmado, setGrabadoConfirmado] = useState(false); // NUEVO: Controla si ya apret贸 el bot贸n
   
   const [availableColors, setAvailableColors] = useState([]);
   const [selectedColor, setSelectedColor] = useState(''); 
@@ -63,17 +63,17 @@ const ProductPage = () => {
     return String(prod.documentId || prod.id || id || '').trim();
   };
 
-  // --- LÓGICA DE PRECIOS BLINDADA ---
+  // --- L脫GICA DE PRECIOS BLINDADA ---
   const PRECIO_GRABADO = 3000;
   
-  // Usamos Number() para obligar a JS a sumar matemáticamente y no pegar textos
+  // Usamos Number() para obligar a JS a sumar matem谩ticamente y no pegar textos
   const precioBase = producto ? Number(producto.precio) : 0;
   
   // Solo sumamos los $3000 si el mate admite grabado Y el usuario ya hizo clic en "Agregar"
   const precioUnitario = (producto?.grabado && grabadoConfirmado) ? precioBase + PRECIO_GRABADO : precioBase;
   const precioTotal = precioUnitario * quantity;
 
-  // Efecto para verificar si el usuario está logeado se consolida más abajo
+  // Efecto para verificar si el usuario est谩 logeado se consolida m谩s abajo
 
   // TRAER LA INFO DEL PRODUCTO DESDE STRAPI
   useEffect(() => {
@@ -85,7 +85,7 @@ const ProductPage = () => {
         
         const colores = [];
         if (prod.color_negro) colores.push('Negro');
-        if (prod.color_marron) colores.push('Marrón');
+        if (prod.color_marron) colores.push('Marr贸n');
         if (prod.color_blanco) colores.push('Blanco');
         if (prod.color_gris) colores.push('Gris');
         
@@ -94,7 +94,7 @@ const ProductPage = () => {
         if (colores.length > 0) {
           setSelectedColor(colores[0]);
         } else {
-          setSelectedColor('Único'); 
+          setSelectedColor('脷nico'); 
         }
 
         setCargando(false);
@@ -119,7 +119,7 @@ const ProductPage = () => {
             if (data && data.loggedIn && data.user) {
             setIsUserLoggedIn(true);
             const favsApi = data.user.favoritos || [];
-            saveFavorites(favsApi); // Sincronizamos siempre, incluso si es vacío, para no resucitar
+            saveFavorites(favsApi); // Sincronizamos siempre, incluso si es vac铆o, para no resucitar
             
             isFav = favsApi.some((p) => String(p.id) === currentProductKey || String(p.documentId) === currentProductKey);
           } else {
@@ -127,11 +127,11 @@ const ProductPage = () => {
           }
         }
       } catch (err) {
-        console.warn('Error al verificar sesión/favoritos:', err);
+        console.warn('Error al verificar sesi贸n/favoritos:', err);
       }
 
       if (!isFav) {
-        // Fallback a localStorage si falló API o no está en API
+        // Fallback a localStorage si fall贸 API o no est谩 en API
         const favoritos = loadFavorites();
         isFav = favoritos.some((p) => String(p.documentId) === currentProductKey || String(p.id) === currentProductKey);
       }
@@ -163,7 +163,7 @@ const ProductPage = () => {
       });
   }, [producto]);
 
-  // Cuando cambia el producto, vamos al inicio de la página
+  // Cuando cambia el producto, vamos al inicio de la p谩gina
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [id]);
@@ -183,11 +183,11 @@ const ProductPage = () => {
           id: idCurrent,
           documentId: idCurrent,
           nombre: producto.nombre || 'Sin nombre',
-          color: selectedColor || 'Único',
+          color: selectedColor || '脷nico',
           imagen: producto.imagenes && producto.imagenes.length > 0 ? `http://localhost:1337${producto.imagenes[0].url}` : ''
         }
       ];
-      showToast('¡Agregado a favoritos!', 'success');
+      showToast('隆Agregado a favoritos!', 'success');
     } else {
       updated = favoritos.filter((p) => String(p.documentId) !== idCurrent && String(p.id) !== idCurrent);
       showToast('Quitado de favoritos', 'info');
@@ -201,7 +201,7 @@ const ProductPage = () => {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: idCurrent, nombre: producto.nombre || 'Sin nombre', color: selectedColor || 'Único' })
+        body: JSON.stringify({ id: idCurrent, nombre: producto.nombre || 'Sin nombre', color: selectedColor || '脷nico' })
       });
     } catch (e) {
       // Si falla la API de favoritos, no bloqueamos la experiencia.
@@ -209,16 +209,16 @@ const ProductPage = () => {
   };
 
   const handleAddToCart = () => {
-    // Si escribió algo pero se olvidó de tocar "Agregar", le avisamos!
+    // Si escribi贸 algo pero se olvid贸 de tocar "Agregar", le avisamos!
     if (producto.grabado && grabado.trim() !== '' && !grabadoConfirmado) {
-      showToast("⚠️ Escribiste un grabado pero no tocaste el botón 'Agregar'. Confírmalo antes de añadir al carrito.", 'warning');
+      showToast("鈿狅笍 Escribiste un grabado pero no tocaste el bot贸n 'Agregar'. Conf铆rmalo antes de a帽adir al carrito.", 'warning');
       return;
     }
 
     // Validar disponibilidad de stock
     const stockDisponible = producto.stock || 0;
     if (stockDisponible <= 0) {
-      showToast("Lo sentimos, este producto está sin stock en este momento.", 'error');
+      showToast("Lo sentimos, este producto est谩 sin stock en este momento.", 'error');
       return;
     }
     
@@ -236,11 +236,11 @@ const ProductPage = () => {
     };
 
     addToCart(productoParaCarrito, quantity, selectedColor, textoGrabado);
-    showToast(`¡Mate agregado al carrito!\nTotal: $${precioTotal.toLocaleString('es-AR')}`, 'success');
+    showToast(`隆Mate agregado al carrito!\nTotal: $${precioTotal.toLocaleString('es-AR')}`, 'success');
   };
 
-  if (cargando) return <div style={{textAlign: 'center', marginTop: '100px'}}><h2>Calentando el agua para tu mate... 🧉</h2></div>;
-  if (!producto) return <div style={{textAlign: 'center', marginTop: '100px'}}><h2>Mate no encontrado 😥</h2></div>;
+  if (cargando) return <div style={{textAlign: 'center', marginTop: '100px'}}><h2>Calentando el agua para tu mate... 馃</h2></div>;
+  if (!producto) return <div style={{textAlign: 'center', marginTop: '100px'}}><h2>Mate no encontrado 馃槬</h2></div>;
 
   return (
     <div className="page-wrapper">
@@ -298,7 +298,7 @@ const ProductPage = () => {
                     fontWeight: '600',
                     letterSpacing: '0.3px'
                   }}>
-                    Últimas unidades disponibles ({producto.stock})
+                    脷ltimas unidades disponibles ({producto.stock})
                   </div>
                 )}
                 {producto.stock >= 3 && (
@@ -348,12 +348,12 @@ const ProductPage = () => {
                         title="Negro"
                       ></span>
                     )}
-                    {availableColors.includes('Marrón') && (
+                    {availableColors.includes('Marr贸n') && (
                       <span 
-                        className={`color-circle brown ${selectedColor === 'Marrón' ? 'selected' : ''}`}
-                        onClick={() => setSelectedColor('Marrón')}
+                        className={`color-circle brown ${selectedColor === 'Marr贸n' ? 'selected' : ''}`}
+                        onClick={() => setSelectedColor('Marr贸n')}
                         style={{backgroundColor: '#8B4513'}}
-                        title="Marrón"
+                        title="Marr贸n"
                       ></span>
                     )}
                     {availableColors.includes('Blanco') && (
@@ -377,13 +377,13 @@ const ProductPage = () => {
               )}
             </div>
 
-            {/* --- SECCIÓN DE GRABADO --- */}
-            {producto.grabado ? (
+            {/* --- SECCI脫N DE GRABADO --- */}
+            {producto.grabado && (
               <div className="engraving-section" style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                   <input 
                     type="text" 
-                    placeholder="Añadir Grabado (+$3.000) (Ej: Iniciales)" 
+                    placeholder="A帽adir Grabado (+$3.000) (Ej: Iniciales)" 
                     value={grabado}
                     maxLength={15}
                     onChange={(e) => {
@@ -406,7 +406,7 @@ const ProductPage = () => {
                   className="btn-dark-small" 
                   onClick={() => {
                     if (grabado.trim() === '') {
-                      showToast("Por favor, escribí lo que querés grabar antes de confirmar.", 'warning');
+                      showToast("Por favor, escrib铆 lo que quer茅s grabar antes de confirmar.", 'warning');
                       return;
                     }
                     setGrabadoConfirmado(true);
@@ -417,22 +417,10 @@ const ProductPage = () => {
                     height: '42px', 
                     padding: '0 20px', 
                     whiteSpace: 'nowrap',
-                    backgroundColor: grabadoConfirmado ? '#2e7d32' : '#1a1a1a' // Se pone verde si ya confirmó
+                    backgroundColor: grabadoConfirmado ? '#2e7d32' : '#1a1a1a' // Se pone verde si ya confirm贸
                   }}
                 >
-                  {grabadoConfirmado ? '✓ Confirmado' : 'Agregar'}
-                </button>
-              </div>
-            ) : (
-              <div className="engraving-section" style={{ opacity: 0.6 }}>
-                <input 
-                  type="text" 
-                  placeholder="Este mate no admite grabado" 
-                  disabled
-                  style={{ cursor: 'not-allowed', backgroundColor: '#f5f5f5', height: '42px' }}
-                />
-                <button className="btn-dark-small" disabled style={{ cursor: 'not-allowed', height: '42px', flexShrink: 0 }}>
-                  No disponible
+                  {grabadoConfirmado ? '鉁� Confirmado' : 'Agregar'}
                 </button>
               </div>
             )}
@@ -448,7 +436,7 @@ const ProductPage = () => {
             >
               {(producto?.stock ?? 0) <= 0 
                 ? 'Sin Stock' 
-                : `Añadir al carrito - $${precioTotal.toLocaleString('es-AR')}`
+                : `A帽adir al carrito - $${precioTotal.toLocaleString('es-AR')}`
               }
             </button>
           </div>

@@ -1,28 +1,110 @@
-const { ApplicationError } = require('@strapi/utils').errors;
+// Clase de error personalizada que declara `status` formalmente
+// Evita el warning "Property 'status' does not exist on type 'Error'"
+class AppValidationError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'AppValidationError';
+    /** @type {number} */
+    this.status = 400;
+  }
+}
+
+const getApplicationError = (message) => {
+  // strapi.errors está disponible en runtime dentro de Strapi v5
+  if (strapi && strapi.errors && strapi.errors.ApplicationError) {
+    return new strapi.errors.ApplicationError(message);
+  }
+  // Fallback: clase propia con status declarado correctamente
+  return new AppValidationError(message);
+};
 
 module.exports = {
-  async beforeUpdate(event) {
-    const { data, where } = event.params;
-    
-    // Restricciones para el estado Rechazado
-    if (data.estado_venta === 'Rechazado') {
-      const currentRecord = await strapi.entityService.findOne('api::pedido.pedido', where.id);
-      const newEstadoEnvio = data.estado_envio || currentRecord.estado_envio;
+  async beforeUpdate({ params }) {
+    try {
+      const { data, where } = params;
       
-      // Regla 1: No se puede rechazar si el estado de envío ya es "Entregado"
-      if (newEstadoEnvio === 'Entregado') {
-        throw new ApplicationError('Un pedido que ya fue entregado no puede ser rechazado.');
+      if (!where || !where.id) {
+        return; // Sin ID no se puede hacer nada
       }
       
-      // Regla 2: Si es Rechazado, forzar estado de envío a Preparando
-      data.estado_envio = 'Preparando';
+      // Obtener el registro actual para comparar
+      const currentRecord = await strapi.entityService.findOne('api::pedido.pedido', where.id);
+      
+      if (!currentRecord) {
+        return; // Registro no existe
+      }
+      
+      const estadoEnvioActual = currentRecord.estado_envio;
+      const estadoVentaActual = currentRecord.estado_venta;
+      
+      // ============================================
+      // VALIDACIÓN: SI EL ENVÍO YA ESTÁ ENTREGADO
+      // ============================================
+      if (estadoEnvioActual === 'Entregado') {
+        // No se puede cambiar NADA si está Entregado
+        if (data.estado_envio && data.estado_envio !== 'Entregado') {
+          throw getApplicationError('Esta accion no esta permitida: El pedido ya fue entregado.');
+        }
+        if (data.estado_venta && data.estado_venta !== 'Aprobado') {
+          throw getApplicationError('Esta accion no esta permitida: El pedido ya fue entregado.');
+        }
+      }
+      
+      // ============================================
+      // VALIDACIÓN: CAMBIOS EN ESTADO_VENTA
+      // ============================================
+      if (data.estado_venta && data.estado_venta !== estadoVentaActual) {
+        const nuevoEstadoVenta = data.estado_venta;
+        
+        // Si es Rechazado, permitir siempre (viene de Mercado Pago)
+        if (nuevoEstadoVenta === 'Rechazado') {
+          // Estado Rechazado viene de Mercado Pago, siempre se permite
+          // Y fuerza el estado de envío a Preparando
+          data.estado_envio = 'Preparando';
+        } 
+        // Si es Pendiente o Aprobado, solo permitir si el envío está en "Preparando"
+        else if (nuevoEstadoVenta === 'Pendiente' || nuevoEstadoVenta === 'Aprobado') {
+          if (estadoEnvioActual !== 'Preparando') {
+            throw getApplicationError('Esta accion no esta permitida: Los cambios en estado de venta solo son permitidos cuando el envío está en preparación.');
+          }
+        }
+      }
+      
+      // ============================================
+      // VALIDACIÓN: CAMBIOS EN ESTADO_ENVIO
+      // ============================================
+      if (data.estado_envio && data.estado_envio !== estadoEnvioActual) {
+        const nuevoEstadoEnvio = data.estado_envio;
+        const transicionesPermitidas = {
+          'Preparando': ['Despachado', 'En camino', 'Entregado'],
+          'Despachado': ['En camino', 'Entregado'],
+          'En camino': ['Entregado'],
+          'Entregado': []
+        };
+        
+        const permitidos = transicionesPermitidas[estadoEnvioActual] || [];
+        
+        if (!permitidos.includes(nuevoEstadoEnvio)) {
+          throw getApplicationError('Esta accion no esta permitida: Transición de estado de envío inválida.');
+        }
+      }
+    } catch (error) {
+      // Re-lanzar errores de validación propios (status 400)
+      if (error.status === 400) {
+        throw error;
+      }
+      // Log de otros errores inesperados
+      strapi.log.error('Error en beforeUpdate de pedido:', error.message);
+      throw getApplicationError('Error al validar cambios en el pedido');
     }
   },
-  async afterUpdate(event) {
-    await syncToBackend(event.result);
+
+  async afterUpdate({ result }) {
+    await syncToBackend(result);
   },
-  async afterCreate(event) {
-    await syncToBackend(event.result);
+
+  async afterCreate({ result }) {
+    await syncToBackend(result);
   }
 };
 

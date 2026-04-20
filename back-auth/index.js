@@ -7,6 +7,7 @@ const db = require('./db'); // Importamos nuestra conexión a la BD
 const { MercadoPagoConfig, Preference, Payment } = require('mercadopago');
 const { sendOrderConfirmation } = require('./services/emailService');
 const { checkStockBeforePayment, deductStockFromStrapi } = require('./services/stockService');
+const { validarCupon, usarCupon } = require('./services/cuponService');
 
 const app = express();
 const PORT = 3001; // Puerto para el back-end
@@ -349,6 +350,7 @@ app.get('/api/reviews/can-review', async (req, res) => {
         }
 
         // Buscar si el usuario compró este producto (o su duplicado por nombre)
+        // IMPORTANTE: Permitir estado 'Pendiente' también, ya que el usuario podría haber pagado pero el webhook no llegó aún
         let query;
         let paramsPurchase;
         if (productType === 'combo') {
@@ -358,7 +360,8 @@ app.get('/api/reviews/can-review', async (req, res) => {
                 JOIN detalle_venta dv ON v.id = dv.id_venta
                 JOIN combo c ON dv.id_combo = c.id
                 WHERE v.id_usuario = $1 
-                AND LOWER(c.descripcion) = LOWER($2)`;
+                AND LOWER(c.descripcion) = LOWER($2)
+                AND (BTRIM(LOWER(v.estado)) != 'cancelado' AND BTRIM(LOWER(v.estado)) != 'rechazado')`;
             paramsPurchase = [userId, dbDescripcion];
         } else {
             query = `
@@ -367,7 +370,8 @@ app.get('/api/reviews/can-review', async (req, res) => {
                 JOIN detalle_venta dv ON v.id = dv.id_venta
                 JOIN producto p ON dv.id_producto = p.id
                 WHERE v.id_usuario = $1 
-                AND LOWER(p.descripcion) = LOWER($2)`;
+                AND LOWER(p.descripcion) = LOWER($2)
+                AND (BTRIM(LOWER(v.estado)) != 'cancelado' AND BTRIM(LOWER(v.estado)) != 'rechazado')`;
             paramsPurchase = [userId, dbDescripcion];
         }
 
@@ -495,6 +499,7 @@ app.post('/api/reviews', async (req, res) => {
         if (descQuery.rows.length > 0) dbDescripcion = descQuery.rows[0].descripcion;
 
         // Verificar que el usuario compró el producto (cualquier version)
+        // IMPORTANTE: Permitir estado 'Pendiente' también, ya que el usuario podría haber pagado pero el webhook no llegó aún
         let purchaseQuery;
         let purchaseParams;
         if (productType === 'combo') {
@@ -502,14 +507,16 @@ app.post('/api/reviews', async (req, res) => {
                 SELECT COUNT(*) as count FROM venta v
                 JOIN detalle_venta dv ON v.id = dv.id_venta
                 JOIN combo c ON dv.id_combo = c.id
-                WHERE v.id_usuario = $1 AND LOWER(c.descripcion) = LOWER($2) AND BTRIM(LOWER(v.estado)) != 'pendiente'`;
+                WHERE v.id_usuario = $1 AND LOWER(c.descripcion) = LOWER($2) 
+                AND (BTRIM(LOWER(v.estado)) != 'cancelado' AND BTRIM(LOWER(v.estado)) != 'rechazado')`;
             purchaseParams = [userId, dbDescripcion];
         } else {
             purchaseQuery = `
                 SELECT COUNT(*) as count FROM venta v
                 JOIN detalle_venta dv ON v.id = dv.id_venta
                 JOIN producto p ON dv.id_producto = p.id
-                WHERE v.id_usuario = $1 AND LOWER(p.descripcion) = LOWER($2) AND BTRIM(LOWER(v.estado)) != 'pendiente'`;
+                WHERE v.id_usuario = $1 AND LOWER(p.descripcion) = LOWER($2) 
+                AND (BTRIM(LOWER(v.estado)) != 'cancelado' AND BTRIM(LOWER(v.estado)) != 'rechazado')`;
             purchaseParams = [userId, dbDescripcion];
         }
 
@@ -976,21 +983,75 @@ app.post('/api/create_preference', async (req, res) => {
     }
 });
 
-// GET cupon parameters
+// GET cupon - busca en Strapi (la fuente de verdad para cupones)
 app.get('/api/cupones/:code', async (req, res) => {
     try {
         const { code } = req.params;
-        const { rows } = await db.query(
-            "SELECT id, tipo_descuento, valor_descuento FROM Cupon WHERE codigo = $1 AND activo = true AND usado = false AND CURRENT_DATE BETWEEN fecha_inicio AND fecha_vencimiento",
-            [code.toUpperCase()]
-        );
-        if (rows.length > 0) {
-            res.json({ success: true, id_cupon: rows[0].id, tipo: rows[0].tipo_descuento, valor: rows[0].valor_descuento });
-        } else {
-            res.json({ success: false, message: 'Cupón inválido o expirado' });
+        const codeBuscado = code.trim().toUpperCase();
+
+        const strapiUrl = process.env.STRAPI_URL || 'http://localhost:1337';
+        const strapiToken = process.env.STRAPI_API_TOKEN;
+
+        if (!strapiToken) {
+            console.error('❌ STRAPI_API_TOKEN no configurado en .env');
+            return res.status(500).json({ success: false, message: 'Error de configuración del servidor' });
         }
+
+        // Buscar el cupón en Strapi por código (case-insensitive)
+        const strapiRes = await fetch(
+            `${strapiUrl}/api/cupons?filters[codigo][$eqi]=${encodeURIComponent(codeBuscado)}&publicationState=live`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${strapiToken}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        if (!strapiRes.ok) {
+            const errText = await strapiRes.text();
+            console.error('❌ Error al consultar Strapi cupones:', strapiRes.status, errText);
+            return res.status(500).json({ success: false, message: 'Error al consultar cupones' });
+        }
+
+        const strapiData = await strapiRes.json();
+
+        // Verificar que existe el cupón
+        if (!strapiData.data || strapiData.data.length === 0) {
+            return res.json({ success: false, message: 'Cupón inválido o expirado' });
+        }
+
+        // En Strapi v5 los campos vienen directamente en el objeto (sin .attributes)
+        const cuponRaw = strapiData.data[0];
+        const cupon = cuponRaw.attributes || cuponRaw; // compatibilidad v4/v5
+
+        // Verificar que esté activo
+        if (!cupon.activo) {
+            return res.json({ success: false, message: 'Cupón inactivo' });
+        }
+
+        // Verificar fecha de vencimiento
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0); // Normalizar a inicio del día
+        const vencimiento = new Date(cupon.fecha_vencimiento);
+        vencimiento.setHours(23, 59, 59, 999); // El cupón es válido todo el día de vencimiento
+
+        if (hoy > vencimiento) {
+            return res.json({ success: false, message: 'Cupón vencido' });
+        }
+
+        console.log(`✅ Cupón válido encontrado en Strapi: ${codeBuscado} → ${cupon.tipo_descuento} ${cupon.valor_descuento}`);
+
+        return res.json({
+            success: true,
+            id_cupon: cuponRaw.id,           // ID de Strapi (para registro)
+            tipo: cupon.tipo_descuento,       // 'porcentaje' o 'monto fijo'
+            valor: cupon.valor_descuento,     // número
+            codigo: cupon.codigo
+        });
+
     } catch (error) {
-        console.error('Coupon DB Error:', error);
+        console.error('❌ Error al validar cupón:', error);
         res.status(500).json({ success: false, message: 'Error de servidor verificando cupón' });
     }
 });
@@ -1329,6 +1390,41 @@ app.post('/api/sync-estado-venta', async (req, res) => {
     } catch (err) {
         console.error("Error sync-estado-venta:", err.message);
         res.status(500).json({ error: err.message });
+    }
+});
+
+/*
+=================================================
+RUTA: VALIDAR Y USAR CUPÓN
+POST /api/cupon/validar
+Body: { codigo: "PRUEBA" }
+Devuelve: { exito: true, descuento: 15, tipo: "porcentaje", mensaje: "..." }
+=================================================
+*/
+app.post('/api/cupon/validar', async (req, res) => {
+    if (!req.session || !req.session.userId) {
+        return res.status(401).json({ exito: false, error: 'Debes estar logueado' });
+    }
+
+    const { codigo } = req.body;
+    const idUsuario = req.session.userId;
+
+    if (!codigo || typeof codigo !== 'string') {
+        return res.status(400).json({ exito: false, error: 'Código de cupón inválido' });
+    }
+
+    try {
+        // Usar el cupón (esto también lo valida)
+        const resultado = await usarCupon(codigo.trim().toUpperCase(), idUsuario);
+        
+        if (!resultado.exito) {
+            return res.status(400).json(resultado);
+        }
+
+        return res.json(resultado);
+    } catch (err) {
+        console.error('Error al procesar cupón:', err);
+        return res.status(500).json({ exito: false, error: 'Error al procesar cupón' });
     }
 });
 

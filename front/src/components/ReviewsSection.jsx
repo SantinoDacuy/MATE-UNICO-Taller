@@ -85,7 +85,7 @@ export default function ReviewsSection({ productId, productType = 'producto' }) 
                                 <div className="review-header">
                                     <div>
                                         <h4 className="review-title">{review.titulo}</h4>
-                                        <p className="review-author">{review.usuario_nombre || 'Usuario'}</p>
+                                        <p className="review-author">Usuario Anónimo</p>
                                     </div>
                                     <StarRating value={review.calificacion} readOnly size="small" />
                                 </div>
@@ -102,7 +102,7 @@ export default function ReviewsSection({ productId, productType = 'producto' }) 
                                     <div className="review-header">
                                         <div>
                                             <h4 className="review-title">{fourthReview.titulo}</h4>
-                                            <p className="review-author">{fourthReview.usuario_nombre || 'Usuario'}</p>
+                                            <p className="review-author">Usuario Anónimo</p>
                                         </div>
                                         <StarRating value={fourthReview.calificacion} readOnly size="small" />
                                     </div>

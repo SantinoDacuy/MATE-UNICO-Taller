@@ -88,7 +88,7 @@ const PagoTarjeta = () => {
             className="btn-pay mp-button" 
             onClick={handleFinalizarCompra}
           >
-            Finalizar y Pagar
+            Continuar Compra
           </button>
         </main>
 

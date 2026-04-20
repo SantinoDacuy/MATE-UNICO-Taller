@@ -39,6 +39,20 @@ const getColor = (data) => {
   return 'Negro'; // default
 };
 
+// FIX: Obtener datos completos del documento usando el documentId
+// En Strapi v5, event.result puede no traer todos los campos → hacemos un findOne
+const getFullData = async (documentId) => {
+  try {
+    const result = await strapi.documents('api::producto.producto').findOne({
+      documentId,
+    });
+    return result;
+  } catch (err) {
+    strapi.log.warn(`⚠️ No se pudo obtener datos completos para documentId ${documentId}: ${err.message}`);
+    return null;
+  }
+};
+
 // Insert/update handler principal
 const syncProductOrCombo = async (knex, documentId, data) => {
   const isCombo = data.categoria === 'combo_simple' || data.categoria === 'combo_completo';
@@ -48,6 +62,16 @@ const syncProductOrCombo = async (knex, documentId, data) => {
   // Buscar si ya está mapeado
   const existing = await knex('strapi_producto_map').where('strapi_document_id', documentId).first();
 
+  // FIX: precio llega como string desde Strapi (biginteger se serializa así)
+  // Usamos parseFloat para manejar ambos casos (string y number)
+  const precio = parseFloat(data.precio) || 0;
+
+  // FIX: grabado puede ser null → lo normalizamos explícitamente a boolean
+  const grabado = data.grabado === true;
+
+  // FIX: usar el campo stock real de Strapi en vez de hardcodear 10
+  const stock = Number(data.stock) || 0;
+
   if (isCombo) {
     const tipo_combo = data.categoria === 'combo_simple' ? 'mate + bombilla' : 'mate + bombilla + bolso';
     const comboRow = {
@@ -55,10 +79,10 @@ const syncProductOrCombo = async (knex, documentId, data) => {
       fotos: null,
       tipo_combo: tipo_combo,
       fecha_creacion: new Date().toISOString().split('T')[0],
-      grabado: data.grabado || false,
-      cantidad_disp: 10,
+      grabado: grabado,
+      cantidad_disp: stock,
       umbral_min: 5,
-      precio: Number(data.precio) || 0
+      precio: precio
     };
 
     if (existing && existing.combo_id) {
@@ -76,11 +100,11 @@ const syncProductOrCombo = async (knex, documentId, data) => {
       color: getColor(data),
       dimensiones: 10.0,
       capacidad: 200,
-      precio: Number(data.precio) || 0,
+      precio: precio,
       fotos: null,
       descripcion: data.nombre || 'Sin nombre',
-      grabado: data.grabado || false,
-      cantidad_disp: 10
+      grabado: grabado,
+      cantidad_disp: stock
     };
 
     if (existing && existing.producto_id) {
@@ -115,11 +139,17 @@ module.exports = {
     try {
       const knex = getKnex();
       await ensureMapTable(knex);
-      const data = event.result;
-      const documentId = data.documentId || String(data.id);
-      
+
+      // FIX: Obtener documentId del resultado y luego buscar datos completos con findOne
+      // event.result en Strapi v5 puede no traer todos los campos
+      const rawResult = event.result;
+      const documentId = rawResult.documentId || String(rawResult.id);
+
+      // Obtener datos completos del documento
+      const data = await getFullData(documentId) || rawResult;
+
       const { tableInserted, pgId } = await syncProductOrCombo(knex, documentId, data);
-      strapi.log.info(`✅ Synced: Strapi ${documentId} → PG ${tableInserted}.id=${pgId}`);
+      strapi.log.info(`✅ [afterCreate] Synced: Strapi ${documentId} → PG ${tableInserted}.id=${pgId}`);
     } catch (error) {
       strapi.log.error('❌ Error (afterCreate):', error.message);
     }
@@ -129,11 +159,16 @@ module.exports = {
     try {
       const knex = getKnex();
       await ensureMapTable(knex);
-      const data = event.result;
-      const documentId = data.documentId || String(data.id);
-      
+
+      // FIX: Mismo fix que en afterCreate — usar findOne para obtener datos completos
+      const rawResult = event.result;
+      const documentId = rawResult.documentId || String(rawResult.id);
+
+      // Obtener datos completos del documento
+      const data = await getFullData(documentId) || rawResult;
+
       const { tableInserted, pgId } = await syncProductOrCombo(knex, documentId, data);
-      strapi.log.info(`✅ Synced update: Strapi ${documentId} → PG ${tableInserted}.id=${pgId}`);
+      strapi.log.info(`✅ [afterUpdate] Synced: Strapi ${documentId} → PG ${tableInserted}.id=${pgId}`);
     } catch (error) {
       strapi.log.error('❌ Error (afterUpdate):', error.message);
     }
@@ -143,6 +178,8 @@ module.exports = {
     try {
       const knex = getKnex();
       await ensureMapTable(knex);
+
+      // FIX: en afterDelete, event.result puede tener documentId o solo id
       const documentId = event.result.documentId || String(event.result.id);
 
       const mapping = await knex('strapi_producto_map').where('strapi_document_id', documentId).first();
