@@ -27,6 +27,7 @@ export default function PagoDireccion() {
 
   const [coupon, setCoupon] = useState('');
   const [appliedCuponId, setAppliedCuponId] = useState(null);
+  const [appliedCuponCode, setAppliedCuponCode] = useState(null);
   const [toastData, setToastData] = useState({ message: '', type: 'info', visible: false });
   const [validando, setValidando] = useState(false);
   const envio = 4000;
@@ -76,7 +77,7 @@ export default function PagoDireccion() {
     if (!code) return showToast('Ingresá un código', 'warning');
 
     try {
-      const res = await fetch(`http://localhost:3001/api/cupones/${code}`);
+      const res = await fetch(`http://localhost:3001/api/cupones/${code}`, { credentials: 'include' });
       const data = await res.json();
 
       if (res.ok && data.success) {
@@ -90,10 +91,12 @@ export default function PagoDireccion() {
 
         setDescuento(montoADescuentar);
         setAppliedCuponId(data.id_cupon);
+        setAppliedCuponCode(data.codigo);
         showToast(`¡Cupón aplicado! -$${montoADescuentar.toLocaleString()}`, 'success');
       } else {
         setDescuento(0);
         setAppliedCuponId(null);
+        setAppliedCuponCode(null);
         showToast(data.message || 'Cupón no válido', 'error');
       }
     } catch (err) {
@@ -146,7 +149,8 @@ export default function PagoDireccion() {
     sessionStorage.setItem('checkout_data', JSON.stringify({ 
         nombre, direccion, provinciaSeleccionada, ciudadSeleccionada, 
         descuento: descuento, totalFinal: total,
-        id_cupon: appliedCuponId // Pasamos el ID para que el back lo registre en la venta
+        id_cupon: appliedCuponId, // Pasamos el ID para que el back lo registre en la venta
+        codigo_cupon: appliedCuponCode
     }));
     
     // Pequeño delay para que vea el toast de éxito

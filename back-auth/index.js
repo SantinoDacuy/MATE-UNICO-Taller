@@ -865,10 +865,10 @@ app.post('/api/create_preference', async (req, res) => {
         console.log(`Iniciando compra para usuario ID: ${userId}`);
 
         const ventaRes = await client.query(
-            `INSERT INTO venta (id_usuario, fecha_venta, subtotal, descuento, total, estado, metodo_pago, id_cupon)
-             VALUES ($1, CURRENT_DATE, $2, $3, $4, 'Pendiente', 'Mercado Pago', $5)
+            `INSERT INTO venta (id_usuario, fecha_venta, subtotal, descuento, total, estado, metodo_pago, id_cupon, codigo_cupon)
+             VALUES ($1, CURRENT_DATE, $2, $3, $4, 'Pendiente', 'Mercado Pago', $5, $6)
              RETURNING id`,
-            [userId, subtotalVenta, checkoutData.descuento || 0, totalFinal, checkoutData.id_cupon || null]
+            [userId, subtotalVenta, checkoutData.descuento || 0, totalFinal, checkoutData.id_cupon || null, checkoutData.codigo_cupon || null]
         );
 
         const ventaId = ventaRes.rows[0].id;
@@ -989,12 +989,24 @@ app.get('/api/cupones/:code', async (req, res) => {
         const { code } = req.params;
         const codeBuscado = code.trim().toUpperCase();
 
-        const strapiUrl = process.env.STRAPI_URL || 'http://localhost:1337';
+        const strapiUrlRaw = process.env.STRAPI_URL || 'http://localhost:1337';
+        const strapiUrl = strapiUrlRaw.replace(/\/$/, '');
         const strapiToken = process.env.STRAPI_API_TOKEN;
 
         if (!strapiToken) {
             console.error('❌ STRAPI_API_TOKEN no configurado en .env');
             return res.status(500).json({ success: false, message: 'Error de configuración del servidor' });
+        }
+
+        if (req.session && req.session.userId) {
+            const result = await db.query(
+                'SELECT id FROM cupones_usados WHERE codigo_cupon = $1 AND id_usuario = $2',
+                [codeBuscado, req.session.userId]
+            );
+
+            if (result.rows.length > 0) {
+                return res.json({ success: false, message: 'Ya usaste este cupón' });
+            }
         }
 
         // Buscar el cupón en Strapi por código (case-insensitive)
@@ -1040,13 +1052,14 @@ app.get('/api/cupones/:code', async (req, res) => {
             return res.json({ success: false, message: 'Cupón vencido' });
         }
 
-        console.log(`✅ Cupón válido encontrado en Strapi: ${codeBuscado} → ${cupon.tipo_descuento} ${cupon.valor_descuento}`);
+        const valorDescuento = cupon.valor_decuento || cupon.valor_descuento;
+        console.log(`✅ Cupón válido encontrado en Strapi: ${codeBuscado} → ${cupon.tipo_descuento} ${valorDescuento}`);
 
         return res.json({
             success: true,
             id_cupon: cuponRaw.id,           // ID de Strapi (para registro)
             tipo: cupon.tipo_descuento,       // 'porcentaje' o 'monto fijo'
-            valor: cupon.valor_descuento,     // número
+            valor: valorDescuento,            // número
             codigo: cupon.codigo
         });
 
@@ -1190,11 +1203,15 @@ app.get('/api/checkout/success', async (req, res) => {
 
             if (paymentInfo.status === 'approved') {
                 // Hacemos el UPDATE solo si no estaba 'Confirmado', para evitar doble proceso si se juntan el success y webhook
-                const { rows } = await db.query("UPDATE venta SET estado = 'Confirmado' WHERE id = $1 AND estado != 'Confirmado' RETURNING id_cupon, id_usuario, total", [externalRef]);
+                const { rows } = await db.query("UPDATE venta SET estado = 'Confirmado' WHERE id = $1 AND estado != 'Confirmado' RETURNING id_cupon, codigo_cupon, id_usuario, total", [externalRef]);
                 
                 if (rows.length > 0) {
-                    if (rows[0].id_cupon) {
-                        await db.query("UPDATE Cupon SET usado = true, activo = false WHERE id = $1", [rows[0].id_cupon]);
+                    if (rows[0].id_cupon && rows[0].codigo_cupon && rows[0].id_usuario) {
+                        try {
+                            await db.query("INSERT INTO cupones_usados (id_usuario, codigo_cupon, id_venta) VALUES ($1, $2, $3)", [rows[0].id_usuario, rows[0].codigo_cupon, externalRef]);
+                        } catch (e) {
+                            console.error('Error insertando en cupones_usados:', e.message);
+                        }
                     }
 
                     await updateStrapiEstado(externalRef, 'Aprobado');
@@ -1291,11 +1308,15 @@ app.post('/api/webhook_mp', async (req, res) => {
                 const ventaId = paymentInfo.external_reference;
                 if (ventaId) {
                     // Hacemos el UPDATE solo si no estaba 'Confirmado', para evitar doble proceso
-                    const { rows } = await db.query("UPDATE venta SET estado = 'Confirmado' WHERE id = $1 AND estado != 'Confirmado' RETURNING id_cupon, id_usuario, total", [ventaId]);
+                    const { rows } = await db.query("UPDATE venta SET estado = 'Confirmado' WHERE id = $1 AND estado != 'Confirmado' RETURNING id_cupon, codigo_cupon, id_usuario, total", [ventaId]);
                     
                     if (rows.length > 0) {
-                        if (rows[0].id_cupon) {
-                            await db.query("UPDATE Cupon SET usado = true, activo = false WHERE id = $1", [rows[0].id_cupon]);
+                        if (rows[0].id_cupon && rows[0].codigo_cupon && rows[0].id_usuario) {
+                            try {
+                                await db.query("INSERT INTO cupones_usados (id_usuario, codigo_cupon, id_venta) VALUES ($1, $2, $3)", [rows[0].id_usuario, rows[0].codigo_cupon, ventaId]);
+                            } catch (e) {
+                                console.error('Error insertando en cupones_usados:', e.message);
+                            }
                         }
                         await updateStrapiEstado(ventaId, 'Aprobado');
                         console.log(`✅ Webhook MP: Pago aprobado para la venta ID: ${ventaId} - Cupón desactivado si aplica.`);
