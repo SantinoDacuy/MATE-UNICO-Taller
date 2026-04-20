@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { useParams, useNavigate } from 'react-router-dom'; 
+import { useParams, useNavigate } from 'react-router-dom';
 import { Heart } from 'lucide-react';
 import { CartContext } from '../context/CartContext';
 import ReviewsSection from '../components/ReviewsSection';
@@ -7,24 +7,24 @@ import Toast from '../components/Toast';
 import Breadcrumbs from '../components/Breadcrumbs';
 import './ProductPage.css';
 
-import camionero1 from '../assets/camionero1.png'; 
+import camionero1 from '../assets/camionero1.png';
 import camionero2 from '../assets/camionero2.png';
 import camionero3 from '../assets/camionero3.png';
 import camionero4 from '../assets/camionero4.png';
 
 const ProductPage = () => {
-  const { id } = useParams(); 
+  const { id } = useParams();
   const navigate = useNavigate();
   const [producto, setProducto] = useState(null);
   const [cargando, setCargando] = useState(true);
-  
+
   const [quantity, setQuantity] = useState(1);
-  const [grabado, setGrabado] = useState(''); 
-  const [grabadoConfirmado, setGrabadoConfirmado] = useState(false); // NUEVO: Controla si ya apret贸 el bot贸n
-  
+  const [grabado, setGrabado] = useState('');
+  const [grabadoConfirmado, setGrabadoConfirmado] = useState(false); // NUEVO: Controla si ya apretó el botón
+
   const [availableColors, setAvailableColors] = useState([]);
-  const [selectedColor, setSelectedColor] = useState(''); 
-  
+  const [selectedColor, setSelectedColor] = useState('');
+
 
 
   const { addToCart, totalItems } = useContext(CartContext);
@@ -63,17 +63,17 @@ const ProductPage = () => {
     return String(prod.documentId || prod.id || id || '').trim();
   };
 
-  // --- L脫GICA DE PRECIOS BLINDADA ---
+  // --- LÓGICA DE PRECIOS BLINDADA ---
   const PRECIO_GRABADO = 3000;
-  
-  // Usamos Number() para obligar a JS a sumar matem谩ticamente y no pegar textos
+
+  // Usamos Number() para obligar a JS a sumar matemáticamente y no pegar textos
   const precioBase = producto ? Number(producto.precio) : 0;
-  
+
   // Solo sumamos los $3000 si el mate admite grabado Y el usuario ya hizo clic en "Agregar"
   const precioUnitario = (producto?.grabado && grabadoConfirmado) ? precioBase + PRECIO_GRABADO : precioBase;
   const precioTotal = precioUnitario * quantity;
 
-  // Efecto para verificar si el usuario est谩 logeado se consolida m谩s abajo
+  // Efecto para verificar si el usuario está logeado se consolida más abajo
 
   // TRAER LA INFO DEL PRODUCTO DESDE STRAPI
   useEffect(() => {
@@ -82,19 +82,19 @@ const ProductPage = () => {
       .then((json) => {
         const prod = json.data;
         setProducto(prod);
-        
+
         const colores = [];
         if (prod.color_negro) colores.push('Negro');
-        if (prod.color_marron) colores.push('Marr贸n');
+        if (prod.color_marron) colores.push('Marrón');
         if (prod.color_blanco) colores.push('Blanco');
         if (prod.color_gris) colores.push('Gris');
-        
+
         setAvailableColors(colores);
-        
+
         if (colores.length > 0) {
           setSelectedColor(colores[0]);
         } else {
-          setSelectedColor('脷nico'); 
+          setSelectedColor('Único');
         }
 
         setCargando(false);
@@ -109,33 +109,33 @@ const ProductPage = () => {
   useEffect(() => {
     if (!producto) return;
     const currentProductKey = normalizeProductKey(producto);
-    
+
     const fetchUserAndFavorites = async () => {
       let isFav = false;
       try {
         const res = await fetch('http://localhost:3001/api/user/me', { credentials: 'include' });
         if (res.ok) {
           const data = await res.json();
-            if (data && data.loggedIn && data.user) {
+          if (data && data.loggedIn && data.user) {
             setIsUserLoggedIn(true);
             const favsApi = data.user.favoritos || [];
-            saveFavorites(favsApi); // Sincronizamos siempre, incluso si es vac铆o, para no resucitar
-            
+            saveFavorites(favsApi); // Sincronizamos siempre, incluso si es vacío, para no resucitar
+
             isFav = favsApi.some((p) => String(p.id) === currentProductKey || String(p.documentId) === currentProductKey);
           } else {
             setIsUserLoggedIn(false);
           }
         }
       } catch (err) {
-        console.warn('Error al verificar sesi贸n/favoritos:', err);
+        console.warn('Error al verificar sesión/favoritos:', err);
       }
 
       if (!isFav) {
-        // Fallback a localStorage si fall贸 API o no est谩 en API
+        // Fallback a localStorage si falló API o no está en API
         const favoritos = loadFavorites();
         isFav = favoritos.some((p) => String(p.documentId) === currentProductKey || String(p.id) === currentProductKey);
       }
-      
+
       setIsFavorite(isFav);
     };
 
@@ -163,7 +163,7 @@ const ProductPage = () => {
       });
   }, [producto]);
 
-  // Cuando cambia el producto, vamos al inicio de la p谩gina
+  // Cuando cambia el producto, vamos al inicio de la página
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [id]);
@@ -183,11 +183,11 @@ const ProductPage = () => {
           id: idCurrent,
           documentId: idCurrent,
           nombre: producto.nombre || 'Sin nombre',
-          color: selectedColor || '脷nico',
+          color: selectedColor || 'Único',
           imagen: producto.imagenes && producto.imagenes.length > 0 ? `http://localhost:1337${producto.imagenes[0].url}` : ''
         }
       ];
-      showToast('隆Agregado a favoritos!', 'success');
+      showToast('¡Agregado a favoritos!', 'success');
     } else {
       updated = favoritos.filter((p) => String(p.documentId) !== idCurrent && String(p.id) !== idCurrent);
       showToast('Quitado de favoritos', 'info');
@@ -201,7 +201,7 @@ const ProductPage = () => {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: idCurrent, nombre: producto.nombre || 'Sin nombre', color: selectedColor || '脷nico' })
+        body: JSON.stringify({ id: idCurrent, nombre: producto.nombre || 'Sin nombre', color: selectedColor || 'Único' })
       });
     } catch (e) {
       // Si falla la API de favoritos, no bloqueamos la experiencia.
@@ -209,19 +209,19 @@ const ProductPage = () => {
   };
 
   const handleAddToCart = () => {
-    // Si escribi贸 algo pero se olvid贸 de tocar "Agregar", le avisamos!
+    // Si escribió algo pero se olvidó de tocar "Agregar", le avisamos!
     if (producto.grabado && grabado.trim() !== '' && !grabadoConfirmado) {
-      showToast("鈿狅笍 Escribiste un grabado pero no tocaste el bot贸n 'Agregar'. Conf铆rmalo antes de a帽adir al carrito.", 'warning');
+      showToast("⚠️ Escribiste un grabado pero no tocaste el botón 'Agregar'. Confírmalo antes de añadir al carrito.", 'warning');
       return;
     }
 
     // Validar disponibilidad de stock
     const stockDisponible = producto.stock || 0;
     if (stockDisponible <= 0) {
-      showToast("Lo sentimos, este producto est谩 sin stock en este momento.", 'error');
+      showToast("Lo sentimos, este producto está sin stock en este momento.", 'error');
       return;
     }
-    
+
     if (quantity > stockDisponible) {
       showToast(`Stock limitado. Solo hay ${stockDisponible} unidades disponibles.`, 'warning');
       setQuantity(stockDisponible);
@@ -229,18 +229,18 @@ const ProductPage = () => {
     }
 
     const textoGrabado = (producto.grabado && grabadoConfirmado) ? grabado.trim() : '';
-    
+
     const productoParaCarrito = {
       ...producto,
       precio: precioUnitario
     };
 
     addToCart(productoParaCarrito, quantity, selectedColor, textoGrabado);
-    showToast(`隆Mate agregado al carrito!\nTotal: $${precioTotal.toLocaleString('es-AR')}`, 'success');
+    showToast(`¡Mate agregado al carrito!\nTotal: $${precioTotal.toLocaleString('es-AR')}`, 'success');
   };
 
-  if (cargando) return <div style={{textAlign: 'center', marginTop: '100px'}}><h2>Calentando el agua para tu mate... 馃</h2></div>;
-  if (!producto) return <div style={{textAlign: 'center', marginTop: '100px'}}><h2>Mate no encontrado 馃槬</h2></div>;
+  if (cargando) return <div style={{ textAlign: 'center', marginTop: '100px' }}><h2>Calentando el agua para tu mate... 🧉</h2></div>;
+  if (!producto) return <div style={{ textAlign: 'center', marginTop: '100px' }}><h2>Mate no encontrado 😥</h2></div>;
 
   return (
     <div className="page-wrapper">
@@ -249,7 +249,7 @@ const ProductPage = () => {
         <Breadcrumbs customLastSegment={producto.nombre} />
 
         <section className="product-detail">
-          
+
           <div className="product-images-grid">
             {producto.imagenes && producto.imagenes.length > 0 ? (
               producto.imagenes.map((img, index) => (
@@ -283,7 +283,7 @@ const ProductPage = () => {
             {/* STOCK ALERT */}
             {producto.stock !== undefined && (
               <>
-                {producto.stock < 3 && producto.stock > 0 && (
+                {producto.stock <= 5 && producto.stock > 0 && (
                   <div style={{
                     backgroundColor: '#fef5f0',
                     borderLeft: '4px solid #ff9800',
@@ -298,25 +298,7 @@ const ProductPage = () => {
                     fontWeight: '600',
                     letterSpacing: '0.3px'
                   }}>
-                    脷ltimas unidades disponibles ({producto.stock})
-                  </div>
-                )}
-                {producto.stock >= 3 && (
-                  <div style={{
-                    backgroundColor: '#f9f9f9',
-                    borderLeft: '4px solid #999',
-                    paddingLeft: '16px',
-                    paddingRight: '16px',
-                    paddingTop: '12px',
-                    paddingBottom: '12px',
-                    marginBottom: '20px',
-                    marginTop: '16px',
-                    color: '#999',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    letterSpacing: '0.3px'
-                  }}>
-                    {producto.stock} unidades disponibles
+                    {producto.stock === 1 ? '¡Última unidad!' : `${producto.stock} últimas unidades`}
                   </div>
                 )}
               </>
@@ -328,47 +310,47 @@ const ProductPage = () => {
 
             <div className="selectors">
               <div className="selector-group">
-                <label>Cantidad {producto.stock !== undefined && producto.stock > 0 && `(Disponibles: ${producto.stock})`}</label>
+                <label>Cantidad</label>
                 <div className="qty-input">
                   <button onClick={() => setQuantity(Math.max(1, quantity - 1))}>-</button>
                   <span>{quantity}</span>
                   <button onClick={() => setQuantity(Math.min(quantity + 1, producto.stock || 1))}>+</button>
                 </div>
               </div>
-              
+
               {availableColors.length > 0 && (
                 <div className="selector-group">
                   <label>Color</label>
                   <div className="color-options">
                     {availableColors.includes('Negro') && (
-                      <span 
+                      <span
                         className={`color-circle black ${selectedColor === 'Negro' ? 'selected' : ''}`}
                         onClick={() => setSelectedColor('Negro')}
-                        style={{backgroundColor: '#000'}}
+                        style={{ backgroundColor: '#000' }}
                         title="Negro"
                       ></span>
                     )}
-                    {availableColors.includes('Marr贸n') && (
-                      <span 
-                        className={`color-circle brown ${selectedColor === 'Marr贸n' ? 'selected' : ''}`}
-                        onClick={() => setSelectedColor('Marr贸n')}
-                        style={{backgroundColor: '#8B4513'}}
-                        title="Marr贸n"
+                    {availableColors.includes('Marrón') && (
+                      <span
+                        className={`color-circle brown ${selectedColor === 'Marrón' ? 'selected' : ''}`}
+                        onClick={() => setSelectedColor('Marrón')}
+                        style={{ backgroundColor: '#8B4513' }}
+                        title="Marrón"
                       ></span>
                     )}
                     {availableColors.includes('Blanco') && (
-                      <span 
+                      <span
                         className={`color-circle ${selectedColor === 'Blanco' ? 'selected' : ''}`}
                         onClick={() => setSelectedColor('Blanco')}
-                        style={{backgroundColor: '#fff', border: '1px solid #ccc'}}
+                        style={{ backgroundColor: '#fff', border: '1px solid #ccc' }}
                         title="Blanco"
                       ></span>
                     )}
                     {availableColors.includes('Gris') && (
-                      <span 
+                      <span
                         className={`color-circle ${selectedColor === 'Gris' ? 'selected' : ''}`}
                         onClick={() => setSelectedColor('Gris')}
-                        style={{backgroundColor: '#808080'}}
+                        style={{ backgroundColor: '#808080' }}
                         title="Gris"
                       ></span>
                     )}
@@ -377,13 +359,13 @@ const ProductPage = () => {
               )}
             </div>
 
-            {/* --- SECCI脫N DE GRABADO --- */}
-            {producto.grabado && (
+            {/* --- SECCIÓN DE GRABADO --- */}
+            {producto.grabado && (producto.stock ?? 0) > 0 && (
               <div className="engraving-section" style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                  <input 
-                    type="text" 
-                    placeholder="A帽adir Grabado (+$3.000) (Ej: Iniciales)" 
+                  <input
+                    type="text"
+                    placeholder="Añadir Grabado (+$3.000) (Ej: Iniciales)"
                     value={grabado}
                     maxLength={15}
                     onChange={(e) => {
@@ -392,41 +374,41 @@ const ProductPage = () => {
                     }}
                     style={{ width: '100%', height: '42px', boxSizing: 'border-box' }}
                   />
-                  <span style={{ 
-                    fontSize: '11px', 
-                    color: grabado.length === 15 ? '#d32f2f' : '#888', 
-                    marginTop: '4px', 
+                  <span style={{
+                    fontSize: '11px',
+                    color: grabado.length === 15 ? '#d32f2f' : '#888',
+                    marginTop: '4px',
                     textAlign: 'right',
                     fontWeight: grabado.length === 15 ? 'bold' : 'normal'
                   }}>
                     {grabado.length}/15 caracteres
                   </span>
                 </div>
-                <button 
-                  className="btn-dark-small" 
+                <button
+                  className="btn-dark-small"
                   onClick={() => {
                     if (grabado.trim() === '') {
-                      showToast("Por favor, escrib铆 lo que quer茅s grabar antes de confirmar.", 'warning');
+                      showToast("Por favor, escribí lo que querés grabar antes de confirmar.", 'warning');
                       return;
                     }
                     setGrabadoConfirmado(true);
                     showToast(`Grabado "${grabado}" confirmado (+ $3.000).`, 'success');
                   }}
-                  style={{ 
-                    flexShrink: 0, 
-                    height: '42px', 
-                    padding: '0 20px', 
+                  style={{
+                    flexShrink: 0,
+                    height: '42px',
+                    padding: '0 20px',
                     whiteSpace: 'nowrap',
-                    backgroundColor: grabadoConfirmado ? '#2e7d32' : '#1a1a1a' // Se pone verde si ya confirm贸
+                    backgroundColor: grabadoConfirmado ? '#2e7d32' : '#1a1a1a' // Se pone verde si ya confirmó
                   }}
                 >
-                  {grabadoConfirmado ? '鉁� Confirmado' : 'Agregar'}
+                  {grabadoConfirmado ? '✓ Confirmado' : 'Agregar'}
                 </button>
               </div>
             )}
 
-            <button 
-              className="btn-primary-block" 
+            <button
+              className="btn-primary-block"
               onClick={handleAddToCart}
               disabled={(producto?.stock ?? 0) <= 0}
               style={{
@@ -434,9 +416,9 @@ const ProductPage = () => {
                 cursor: (producto?.stock ?? 0) <= 0 ? 'not-allowed' : 'pointer'
               }}
             >
-              {(producto?.stock ?? 0) <= 0 
-                ? 'Sin Stock' 
-                : `A帽adir al carrito - $${precioTotal.toLocaleString('es-AR')}`
+              {(producto?.stock ?? 0) <= 0
+                ? 'Sin Stock'
+                : `Añadir al carrito - $${precioTotal.toLocaleString('es-AR')}`
               }
             </button>
           </div>
@@ -447,7 +429,7 @@ const ProductPage = () => {
         </section>
 
         <section className="similar-products">
-          <h2>Ver <br/> Productos <br/> similares</h2>
+          <h2>Ver <br /> Productos <br /> similares</h2>
           <div className="products-carousel">
             {similarProducts.length === 0 ? (
               <div className="product-card">
@@ -484,11 +466,11 @@ const ProductPage = () => {
           </div>
         </section>
       </main>
-      <Toast 
-        message={toastData.message} 
-        type={toastData.type} 
-        visible={toastData.visible} 
-        onClose={closeToast} 
+      <Toast
+        message={toastData.message}
+        type={toastData.type}
+        visible={toastData.visible}
+        onClose={closeToast}
       />
     </div>
   );

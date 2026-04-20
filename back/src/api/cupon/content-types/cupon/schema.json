@@ -18,11 +18,10 @@
     "tipo_descuento": {
       "type": "enumeration",
       "enum": [
-        "porcentaje",
-        "monto fijo"
+        "porcentaje"
       ]
     },
-    "valor_descuento": {
+    "valor_decuento": {
       "type": "integer"
     },
     "fecha_vencimiento": {
