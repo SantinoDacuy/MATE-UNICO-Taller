@@ -18,8 +18,7 @@
     "tipo_descuento": {
       "type": "enumeration",
       "enum": [
-        "porcentaje",
-        "monto fijo"
+        "porcentaje"
       ]
     },
     "valor_descuento": {

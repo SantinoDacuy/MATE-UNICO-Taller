@@ -27,6 +27,7 @@ export default function PagoDireccion() {
 
   const [coupon, setCoupon] = useState('');
   const [appliedCuponId, setAppliedCuponId] = useState(null);
+  const [appliedCuponCodigo, setAppliedCuponCodigo] = useState(null); // Guardamos el código para enviarlo al backend
   const [toastData, setToastData] = useState({ message: '', type: 'info', visible: false });
   const [validando, setValidando] = useState(false);
   const envio = 4000;
@@ -90,10 +91,12 @@ export default function PagoDireccion() {
 
         setDescuento(montoADescuentar);
         setAppliedCuponId(data.id_cupon);
+        setAppliedCuponCodigo(data.codigo || code); // Guardamos el código
         showToast(`¡Cupón aplicado! -$${montoADescuentar.toLocaleString()}`, 'success');
       } else {
         setDescuento(0);
         setAppliedCuponId(null);
+        setAppliedCuponCodigo(null);
         showToast(data.message || 'Cupón no válido', 'error');
       }
     } catch (err) {
@@ -146,7 +149,8 @@ export default function PagoDireccion() {
     sessionStorage.setItem('checkout_data', JSON.stringify({ 
         nombre, direccion, provinciaSeleccionada, ciudadSeleccionada, 
         descuento: descuento, totalFinal: total,
-        id_cupon: appliedCuponId // Pasamos el ID para que el back lo registre en la venta
+        id_cupon: appliedCuponId,           // ID de Strapi
+        codigo_cupon: appliedCuponCodigo    // Código del cupón (para registrar uso en cupones_usados)
     }));
     
     // Pequeño delay para que vea el toast de éxito
@@ -180,7 +184,7 @@ export default function PagoDireccion() {
           <div className="cupon-descuento">
             <input value={coupon} onChange={e => setCoupon(e.target.value)} type="text" placeholder="Cupón de descuento" disabled={appliedCuponId !== null} />
             {appliedCuponId ? (
-              <button type="button" className="btn-agregar-cupon" style={{background: '#d32f2f', color: '#fff'}} onClick={() => { setDescuento(0); setAppliedCuponId(null); setCoupon(''); showToast('Cupón removido', 'info'); }}>Quitar ✕</button>
+              <button type="button" className="btn-agregar-cupon" style={{background: '#d32f2f', color: '#fff'}} onClick={() => { setDescuento(0); setAppliedCuponId(null); setAppliedCuponCodigo(null); setCoupon(''); showToast('Cupón removido', 'info'); }}>Quitar ✕</button>
             ) : (
               <button type="button" className="btn-agregar-cupon" onClick={applyCoupon}>Agregar</button>
             )}

@@ -960,7 +960,8 @@ app.post('/api/create_preference', async (req, res) => {
                     }
                 ],
                 metadata: {
-                    cart_json: JSON.stringify(cartItemsForMetadata).substring(0, 500)
+                    cart_json: JSON.stringify(cartItemsForMetadata).substring(0, 500),
+                    cupon_codigo: checkoutData.codigo_cupon || null // Código del cupón para registrar uso al aprobar
                 },
                 external_reference: String(ventaId),
                 back_urls: {
@@ -995,6 +996,23 @@ app.get('/api/cupones/:code', async (req, res) => {
         if (!strapiToken) {
             console.error('❌ STRAPI_API_TOKEN no configurado en .env');
             return res.status(500).json({ success: false, message: 'Error de configuración del servidor' });
+        }
+
+        // --- VERIFICAR SI EL USUARIO YA USÓ ESTE CUPÓN ---
+        // Solo si hay sesión activa (el usuario está logueado)
+        if (req.session && req.session.userId) {
+            try {
+                const { rows: yaUsado } = await db.query(
+                    'SELECT id FROM cupones_usados WHERE codigo_cupon = $1 AND id_usuario = $2',
+                    [codeBuscado, req.session.userId]
+                );
+                if (yaUsado.length > 0) {
+                    return res.json({ success: false, message: 'Ya usaste este cupón anteriormente' });
+                }
+            } catch (dbErr) {
+                // Si la tabla no existe aún, ignorar y continuar
+                console.warn('⚠️ No se pudo verificar cupones_usados:', dbErr.message);
+            }
         }
 
         // Buscar el cupón en Strapi por código (case-insensitive)
@@ -1032,9 +1050,9 @@ app.get('/api/cupones/:code', async (req, res) => {
 
         // Verificar fecha de vencimiento
         const hoy = new Date();
-        hoy.setHours(0, 0, 0, 0); // Normalizar a inicio del día
+        hoy.setHours(0, 0, 0, 0);
         const vencimiento = new Date(cupon.fecha_vencimiento);
-        vencimiento.setHours(23, 59, 59, 999); // El cupón es válido todo el día de vencimiento
+        vencimiento.setHours(23, 59, 59, 999);
 
         if (hoy > vencimiento) {
             return res.json({ success: false, message: 'Cupón vencido' });
@@ -1045,9 +1063,9 @@ app.get('/api/cupones/:code', async (req, res) => {
         return res.json({
             success: true,
             id_cupon: cuponRaw.id,           // ID de Strapi (para registro)
+            codigo: cupon.codigo || codeBuscado, // Código para registrar en cupones_usados
             tipo: cupon.tipo_descuento,       // 'porcentaje' o 'monto fijo'
             valor: cupon.valor_descuento,     // número
-            codigo: cupon.codigo
         });
 
     } catch (error) {
@@ -1193,12 +1211,43 @@ app.get('/api/checkout/success', async (req, res) => {
                 const { rows } = await db.query("UPDATE venta SET estado = 'Confirmado' WHERE id = $1 AND estado != 'Confirmado' RETURNING id_cupon, id_usuario, total", [externalRef]);
                 
                 if (rows.length > 0) {
-                    if (rows[0].id_cupon) {
-                        await db.query("UPDATE Cupon SET usado = true, activo = false WHERE id = $1", [rows[0].id_cupon]);
+                    // Registrar uso del cupón si aplica
+                    const codigoCupon = paymentInfo.metadata && paymentInfo.metadata.cupon_codigo
+                        ? paymentInfo.metadata.cupon_codigo
+                        : null;
+                    if (codigoCupon && rows[0].id_usuario) {
+                        try {
+                            // 1. Registrar en cupones_usados (evita reutilización por usuario)
+                            await db.query(
+                                'INSERT INTO cupones_usados (id_usuario, codigo_cupon, id_venta) VALUES ($1, $2, $3) ON CONFLICT (codigo_cupon, id_usuario) DO NOTHING',
+                                [rows[0].id_usuario, codigoCupon.toUpperCase(), externalRef]
+                            );
+                            // 2. Desactivar el cupón en Strapi
+                            const strapiToken = process.env.STRAPI_API_TOKEN;
+                            const strapiUrl = process.env.STRAPI_URL || 'http://localhost:1337';
+                            if (strapiToken) {
+                                const findCupon = await fetch(
+                                    `${strapiUrl}/api/cupons?filters[codigo][$eqi]=${encodeURIComponent(codigoCupon)}&publicationState=live`,
+                                    { headers: { 'Authorization': `Bearer ${strapiToken}` } }
+                                );
+                                const cuponData = await findCupon.json();
+                                if (cuponData.data && cuponData.data.length > 0) {
+                                    const docId = cuponData.data[0].documentId || cuponData.data[0].id;
+                                    await fetch(`${strapiUrl}/api/cupons/${docId}`, {
+                                        method: 'PUT',
+                                        headers: { 'Authorization': `Bearer ${strapiToken}`, 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ data: { activo: false } })
+                                    });
+                                    console.log(`✅ Cupón ${codigoCupon} desactivado en Strapi`);
+                                }
+                            }
+                        } catch (cuponErr) {
+                            console.error('⚠️ Error registrando uso de cupón:', cuponErr.message);
+                        }
                     }
 
                     await updateStrapiEstado(externalRef, 'Aprobado');
-                    console.log(`✅ Pago verificado y aprobado. Venta ID: ${externalRef} - Cupón descontado si aplica.`);
+                    console.log(`✅ Pago verificado y aprobado. Venta ID: ${externalRef} - Cupón registrado si aplica.`);
 
                     // Descontar stock en Strapi leyendo los metadatos de Mercado Pago
                     if (paymentInfo.metadata && paymentInfo.metadata.cart_json) {
@@ -1294,11 +1343,40 @@ app.post('/api/webhook_mp', async (req, res) => {
                     const { rows } = await db.query("UPDATE venta SET estado = 'Confirmado' WHERE id = $1 AND estado != 'Confirmado' RETURNING id_cupon, id_usuario, total", [ventaId]);
                     
                     if (rows.length > 0) {
-                        if (rows[0].id_cupon) {
-                            await db.query("UPDATE Cupon SET usado = true, activo = false WHERE id = $1", [rows[0].id_cupon]);
+                        // Registrar uso del cupón si aplica
+                        const codigoCupon = paymentInfo.metadata && paymentInfo.metadata.cupon_codigo
+                            ? paymentInfo.metadata.cupon_codigo
+                            : null;
+                        if (codigoCupon && rows[0].id_usuario) {
+                            try {
+                                await db.query(
+                                    'INSERT INTO cupones_usados (id_usuario, codigo_cupon, id_venta) VALUES ($1, $2, $3) ON CONFLICT (codigo_cupon, id_usuario) DO NOTHING',
+                                    [rows[0].id_usuario, codigoCupon.toUpperCase(), ventaId]
+                                );
+                                const strapiToken = process.env.STRAPI_API_TOKEN;
+                                const strapiUrl = process.env.STRAPI_URL || 'http://localhost:1337';
+                                if (strapiToken) {
+                                    const findCupon = await fetch(
+                                        `${strapiUrl}/api/cupons?filters[codigo][$eqi]=${encodeURIComponent(codigoCupon)}&publicationState=live`,
+                                        { headers: { 'Authorization': `Bearer ${strapiToken}` } }
+                                    );
+                                    const cuponData = await findCupon.json();
+                                    if (cuponData.data && cuponData.data.length > 0) {
+                                        const docId = cuponData.data[0].documentId || cuponData.data[0].id;
+                                        await fetch(`${strapiUrl}/api/cupons/${docId}`, {
+                                            method: 'PUT',
+                                            headers: { 'Authorization': `Bearer ${strapiToken}`, 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ data: { activo: false } })
+                                        });
+                                        console.log(`✅ Cupón ${codigoCupon} desactivado en Strapi (webhook)`);
+                                    }
+                                }
+                            } catch (cuponErr) {
+                                console.error('⚠️ Error registrando uso de cupón (webhook):', cuponErr.message);
+                            }
                         }
                         await updateStrapiEstado(ventaId, 'Aprobado');
-                        console.log(`✅ Webhook MP: Pago aprobado para la venta ID: ${ventaId} - Cupón desactivado si aplica.`);
+                        console.log(`✅ Webhook MP: Pago aprobado para la venta ID: ${ventaId} - Cupón registrado si aplica.`);
 
                     // Descontar stock en Strapi leyendo los metadatos de Mercado Pago
                     if (paymentInfo.metadata && paymentInfo.metadata.cart_json) {
