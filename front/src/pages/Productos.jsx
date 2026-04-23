@@ -29,15 +29,15 @@ const Productos = () => {
     if (f) {
       setFiltrosActivos(f.split(',').map(item => item.trim()));
     } else {
-      setFiltrosActivos([]); 
+      setFiltrosActivos([]);
     }
 
     if (sort) setOrden(sort);
-  }, [location.search]); 
+  }, [location.search]);
 
   // --- TRAER MATES DE STRAPI ---
   useEffect(() => {
-    fetch('http://localhost:1337/api/productos?populate=*')
+    fetch('http://localhost:1337/api/productos?populate=*&pagination[limit]=40')
       .then((r) => r.json())
       .then((json) => {
         setProductos(json.data);
@@ -57,7 +57,7 @@ const Productos = () => {
 
     // A. Buscador de texto
     if (busquedaInicial) {
-      resultado = resultado.filter(prod => 
+      resultado = resultado.filter(prod =>
         prod.nombre.toLowerCase().includes(busquedaInicial.toLowerCase()) ||
         (prod.descripcion && prod.descripcion.toLowerCase().includes(busquedaInicial.toLowerCase()))
       );
@@ -95,18 +95,18 @@ const Productos = () => {
             const mat = (prod.material || '').toLowerCase();
             const mod = (prod.modelo || '').toLowerCase();
             const nom = (prod.nombre || '').toLowerCase();
-            
+
             // Función auxiliar para saber si es un modelo en cuestión
             const esModelo = (m) => mod.includes(m) || nom.includes(m);
 
             if (filtro === 'calabaza-imperial') return mat === 'calabaza' && esModelo('imperial');
             if (filtro === 'calabaza-torpedo') return mat === 'calabaza' && esModelo('torpedo');
             if (filtro === 'calabaza-camionero') return mat === 'calabaza' && esModelo('camionero');
-            
+
             if (filtro === 'madera-imperial') return mat === 'madera' && esModelo('imperial');
             if (filtro === 'madera-torpedo') return mat === 'madera' && esModelo('torpedo');
             if (filtro === 'madera-camionero') return mat === 'madera' && esModelo('camionero');
-            
+
             if (filtro === 'metal') return mat === 'metal' || nom.includes('acero') || nom.includes('metal') || nom.includes('térmico');
             if (filtro === 'vidrio') return mat === 'vidrio' || nom.includes('vidrio');
             return false;
@@ -138,11 +138,18 @@ const Productos = () => {
       default: break;
     }
 
+    // D. Sin stock siempre al final (sort estable: respeta el orden anterior)
+    resultado.sort((a, b) => {
+      const sinStockA = !a.stock || a.stock <= 0 ? 1 : 0;
+      const sinStockB = !b.stock || b.stock <= 0 ? 1 : 0;
+      return sinStockA - sinStockB;
+    });
+
     setProductosFiltrados(resultado);
   }, [productos, location.search, filtrosActivos, orden]);
 
   const toggleFiltro = (valor) => {
-    setFiltrosActivos(prev => 
+    setFiltrosActivos(prev =>
       prev.includes(valor) ? prev.filter(f => f !== valor) : [...prev, valor]
     );
   };
@@ -152,14 +159,14 @@ const Productos = () => {
       <Breadcrumbs />
 
       <main className="catalogo-layout">
-        
+
         {/* SIDEBAR DE FILTROS */}
         <aside className="catalogo-sidebar">
           <h3>Filtros</h3>
-          
+
           <div className="filtro-grupo">
             <h4>Mate</h4>
-            
+
             {/* GRUPO CALABAZA */}
             <div className="filtro-subgrupo">
               <h5>Calabaza</h5>
@@ -167,7 +174,7 @@ const Productos = () => {
               <label><input type="checkbox" checked={filtrosActivos.includes('calabaza-torpedo')} onChange={() => toggleFiltro('calabaza-torpedo')} /> Torpedo</label>
               <label><input type="checkbox" checked={filtrosActivos.includes('calabaza-camionero')} onChange={() => toggleFiltro('calabaza-camionero')} /> Camionero</label>
             </div>
-            
+
             {/* GRUPO MADERA */}
             <div className="filtro-subgrupo">
               <h5>Madera</h5>
@@ -175,7 +182,7 @@ const Productos = () => {
               <label><input type="checkbox" checked={filtrosActivos.includes('madera-torpedo')} onChange={() => toggleFiltro('madera-torpedo')} /> Torpedo</label>
               <label><input type="checkbox" checked={filtrosActivos.includes('madera-camionero')} onChange={() => toggleFiltro('madera-camionero')} /> Camionero</label>
             </div>
-            
+
             {/* OTROS */}
             <div className="filtro-subgrupo">
               <h5>Metal</h5>
@@ -191,11 +198,11 @@ const Productos = () => {
           <div className="filtro-grupo">
             <h4>Combos</h4>
             <label className="filtro-suelto">
-              <input type="checkbox" checked={filtrosActivos.includes('combo_simple')} onChange={() => toggleFiltro('combo_simple')} /> 
+              <input type="checkbox" checked={filtrosActivos.includes('combo_simple')} onChange={() => toggleFiltro('combo_simple')} />
               Mate + Bombilla
             </label>
             <label className="filtro-suelto">
-              <input type="checkbox" checked={filtrosActivos.includes('combo_completo')} onChange={() => toggleFiltro('combo_completo')} /> 
+              <input type="checkbox" checked={filtrosActivos.includes('combo_completo')} onChange={() => toggleFiltro('combo_completo')} />
               Mate + Bombilla + Bolso
             </label>
           </div>
@@ -204,18 +211,18 @@ const Productos = () => {
           <div className="filtro-grupo">
             <h4>Colores</h4>
             <div className="colores-grid">
-              <label className="color-option"><input type="checkbox" checked={filtrosActivos.includes('negro')} onChange={() => toggleFiltro('negro')} /><span className="color-circle" style={{backgroundColor: '#000'}}></span> Negro</label>
-              <label className="color-option"><input type="checkbox" checked={filtrosActivos.includes('marron')} onChange={() => toggleFiltro('marron')} /><span className="color-circle" style={{backgroundColor: '#8B4513'}}></span> Marrón</label>
-              <label className="color-option"><input type="checkbox" checked={filtrosActivos.includes('blanco')} onChange={() => toggleFiltro('blanco')} /><span className="color-circle" style={{backgroundColor: '#fff', border: '1px solid #ccc'}}></span> Blanco</label>
-              <label className="color-option"><input type="checkbox" checked={filtrosActivos.includes('gris')} onChange={() => toggleFiltro('gris')} /><span className="color-circle" style={{backgroundColor: '#808080'}}></span> Gris</label>
+              <label className="color-option"><input type="checkbox" checked={filtrosActivos.includes('negro')} onChange={() => toggleFiltro('negro')} /><span className="color-circle" style={{ backgroundColor: '#000' }}></span> Negro</label>
+              <label className="color-option"><input type="checkbox" checked={filtrosActivos.includes('marron')} onChange={() => toggleFiltro('marron')} /><span className="color-circle" style={{ backgroundColor: '#8B4513' }}></span> Marrón</label>
+              <label className="color-option"><input type="checkbox" checked={filtrosActivos.includes('blanco')} onChange={() => toggleFiltro('blanco')} /><span className="color-circle" style={{ backgroundColor: '#fff', border: '1px solid #ccc' }}></span> Blanco</label>
+              <label className="color-option"><input type="checkbox" checked={filtrosActivos.includes('gris')} onChange={() => toggleFiltro('gris')} /><span className="color-circle" style={{ backgroundColor: '#808080' }}></span> Gris</label>
             </div>
           </div>
 
           {filtrosActivos.length > 0 && (
-            <button 
+            <button
               onClick={() => {
                 setFiltrosActivos([]);
-                navigate('/productos'); 
+                navigate('/productos');
               }}
               style={{
                 width: '100%', marginTop: '15px', padding: '12px',
@@ -236,7 +243,7 @@ const Productos = () => {
               {new URLSearchParams(location.search).get('q') ? <h2>Resultados para "{new URLSearchParams(location.search).get('q')}"</h2> : <h2>Todos los Productos</h2>}
               <p className="resultados-count">{productosFiltrados.length} productos encontrados</p>
             </div>
-            
+
             <div className="ordenar-caja">
               <label>Ordenar por:</label>
               <select value={orden} onChange={(e) => setOrden(e.target.value)}>
@@ -255,7 +262,7 @@ const Productos = () => {
           ) : productosFiltrados.length === 0 ? (
             <div className="empty-state">
               <h2>No encontramos mates con esos filtros 😥</h2>
-              <button className="btn-reset" onClick={() => {setFiltrosActivos([]); navigate('/productos');}}>Limpiar Filtros</button>
+              <button className="btn-reset" onClick={() => { setFiltrosActivos([]); navigate('/productos'); }}>Limpiar Filtros</button>
             </div>
           ) : (
             <div className="grid-productos">

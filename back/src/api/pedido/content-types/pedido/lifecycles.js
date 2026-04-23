@@ -1,25 +1,36 @@
+'use strict';
+
 // Clase de error personalizada que declara `status` formalmente
-// Evita el warning "Property 'status' does not exist on type 'Error'"
 class AppValidationError extends Error {
   constructor(message) {
     super(message);
     this.name = 'AppValidationError';
-    /** @type {number} */
     this.status = 400;
   }
 }
 
+/**
+ * @param {string} message
+ * @returns {AppValidationError}
+ */
 const getApplicationError = (message) => {
-  // strapi.errors está disponible en runtime dentro de Strapi v5
-  if (strapi && strapi.errors && strapi.errors.ApplicationError) {
-    return new strapi.errors.ApplicationError(message);
-  }
-  // Fallback: clase propia con status declarado correctamente
   return new AppValidationError(message);
 };
 
+/**
+ * @typedef {Object} LifecycleEvent
+ * @property {Object} params - Parámetros del evento
+ * @property {Object} params.data - Datos a actualizar
+ * @property {Object} params.where - Condición WHERE
+ */
+
 module.exports = {
-  async beforeUpdate({ params }) {
+  /**
+   * Validar cambios en pedidos antes de actualizar
+   * @param {LifecycleEvent} event
+   */
+  async beforeUpdate(event) {
+    const { params } = event;
     try {
       const { data, where } = params;
       
@@ -90,28 +101,50 @@ module.exports = {
       }
     } catch (error) {
       // Re-lanzar errores de validación propios (status 400)
-      if (error.status === 400) {
+      if (error instanceof AppValidationError && error.status === 400) {
         throw error;
       }
       // Log de otros errores inesperados
-      strapi.log.error('Error en beforeUpdate de pedido:', error.message);
+      if (error instanceof Error) {
+        strapi.log.error('Error en beforeUpdate de pedido:', error.message);
+      }
       throw getApplicationError('Error al validar cambios en el pedido');
     }
   },
 
-  async afterUpdate({ result }) {
+  /**
+   * Sincronizar con backend después de actualizar
+   * @param {Object} event
+   * @param {Object} event.result - Resultado de la actualización
+   */
+  async afterUpdate(event) {
+    const { result } = event;
     await syncToBackend(result);
   },
 
-  async afterCreate({ result }) {
+  /**
+   * Sincronizar con backend después de crear
+   * @param {Object} event
+   * @param {Object} event.result - Resultado de la creación
+   */
+  async afterCreate(event) {
+    const { result } = event;
     await syncToBackend(result);
   }
 };
 
+/**
+ * Sincroniza cambios de pedido con PostgreSQL backend
+ * @param {Object} eventResult
+ */
 async function syncToBackend(eventResult) {
   try {
-    // Strapi 4 en "afterUpdate" a veces no devuelve todos los campos
-    // Nos aseguramos obteniendo la entidad completa directo desde la BD de Strapi
+    if (!eventResult || !eventResult.id) {
+      strapi.log.warn('syncToBackend: No event result o id faltante');
+      return;
+    }
+
+    // Strapi 5 devuelve los datos directamente
     const fullRecord = await strapi.entityService.findOne('api::pedido.pedido', eventResult.id);
 
     // Solo sincronizar si hay un id_venta de postgres asociado
@@ -127,7 +160,8 @@ async function syncToBackend(eventResult) {
       });
 
       if (!resp.ok) {
-        strapi.log.error(`Backend Postgres rechazó el sync: ${await resp.text()}`);
+        const errorText = await resp.text();
+        strapi.log.error(`Backend Postgres rechazó el sync: ${errorText}`);
       } else {
         strapi.log.info(`Sync OK: Venta PG ${fullRecord.id_venta} actualizada al estado: ${fullRecord.estado_venta}`);
       }
@@ -135,6 +169,10 @@ async function syncToBackend(eventResult) {
       strapi.log.warn(`No sync: No hay id_venta asociado para pedido ID ${eventResult.id}`);
     }
   } catch (err) {
-    strapi.log.error(`Fallo crítico al sincronizar con postgres: ${err.message}`);
+    if (err instanceof Error) {
+      strapi.log.error(`Fallo crítico al sincronizar con postgres: ${err.message}`);
+    } else {
+      strapi.log.error(`Fallo crítico al sincronizar con postgres: ${String(err)}`);
+    }
   }
 }
