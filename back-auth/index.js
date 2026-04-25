@@ -611,10 +611,12 @@ app.get('/api/user/me/ventas', async (req, res) => {
                         dv.precio_unitario, 
                         dv.subtotal, 
                         COALESCE(p.descripcion, c.descripcion) as producto_nombre,
-                        COALESCE(p.material, 'Combo') as material
+                        COALESCE(p.material, 'Combo') as material,
+                        m.strapi_document_id
                     FROM detalle_venta dv
                     LEFT JOIN Producto p ON dv.id_producto = p.id
                     LEFT JOIN Combo c ON dv.id_combo = c.id
+                    LEFT JOIN strapi_producto_map m ON (dv.id_producto = m.producto_id OR dv.id_combo = m.combo_id)
                     WHERE dv.id_venta = ${venta.id}`;
                 const { rows: detalles } = await db.query(detallesQuery);
 
@@ -626,6 +628,7 @@ app.get('/api/user/me/ventas', async (req, res) => {
                     subtotal: d.subtotal,
                     id_producto: d.id_producto,
                     producto_nombre: d.producto_nombre,
+                    documentId: d.strapi_document_id,
                     producto: {
                         material: d.material
                     }

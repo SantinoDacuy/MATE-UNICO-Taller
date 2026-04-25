@@ -62,11 +62,14 @@ export default function UserProfile() {
                 // Fetch de productos de Strapi para poder pintar las imágenes
                 let strapiProdMap = {};
                 try {
-                    const resProds = await fetch('http://localhost:1337/api/productos?populate=*');
+                    // Aumentamos el límite a 1000 para asegurar que todos los productos se carguen y las imágenes aparezcan en el historial del perfil
+                    const resProds = await fetch('http://localhost:1337/api/productos?populate=*&pagination[limit]=1000');
                     const dataProds = await resProds.json();
                     if (dataProds?.data) {
                         dataProds.data.forEach(p => {
-                            strapiProdMap[p.documentId || p.id] = {
+                            const pId = p.documentId || String(p.id);
+                            strapiProdMap[pId] = {
+                                documentId: p.documentId,
                                 nombre: p.nombre,
                                 imageUrl: p.imagenes?.length > 0 ? `http://localhost:1337${p.imagenes[0].url}` : '/assets/default-placeholder.png'
                             };
@@ -106,12 +109,21 @@ export default function UserProfile() {
                     if (vdata.success && Array.isArray(vdata.ventas)) {
                         const enriquecidas = vdata.ventas.map(v => ({
                             ...v,
-                            detalle: v.detalle?.map(d => ({
-                                ...d,
-                                strapiInfo: Object.values(strapiProdMap).find(
-                                    sp => sp.nombre?.toLowerCase() === d.producto_nombre?.toLowerCase()
-                                ) || null
-                            }))
+                            detalle: v.detalle?.map(d => {
+                                let info = null;
+                                if (d.documentId) {
+                                    info = strapiProdMap[d.documentId];
+                                }
+                                if (!info) {
+                                    info = Object.values(strapiProdMap).find(
+                                        sp => sp.nombre?.trim().toLowerCase() === d.producto_nombre?.trim().toLowerCase()
+                                    );
+                                }
+                                return {
+                                    ...d,
+                                    strapiInfo: info || null
+                                };
+                            })
                         }));
                         setVentas(enriquecidas);
                     }

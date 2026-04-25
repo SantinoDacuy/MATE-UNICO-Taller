@@ -37,7 +37,7 @@ const Productos = () => {
 
   // --- TRAER MATES DE STRAPI ---
   useEffect(() => {
-    fetch('http://localhost:1337/api/productos?populate=*')
+    fetch('http://localhost:1337/api/productos?populate=*&pagination[limit]=40')
       .then((r) => r.json())
       .then((json) => {
         setProductos(json.data);
@@ -137,6 +137,13 @@ const Productos = () => {
       case 'mas-vendidos': resultado.sort((a, b) => a.id - b.id); break;
       default: break;
     }
+
+    // D. Sin stock siempre al final (sort estable: respeta el orden anterior)
+    resultado.sort((a, b) => {
+      const sinStockA = !a.stock || a.stock <= 0 ? 1 : 0;
+      const sinStockB = !b.stock || b.stock <= 0 ? 1 : 0;
+      return sinStockA - sinStockB;
+    });
 
     setProductosFiltrados(resultado);
   }, [productos, location.search, filtrosActivos, orden]);

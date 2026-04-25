@@ -14,9 +14,9 @@ export default function HistorialCompras() {
 
     const ventasRefs = useRef({});
 
-    // Cargar productos desde Strapi
     useEffect(() => {
-        fetch('http://localhost:1337/api/productos?populate=*')
+        // Aumentamos el límite a 1000 para asegurar que todos los productos se carguen y las imágenes aparezcan en el historial
+        fetch('http://localhost:1337/api/productos?populate=*&pagination[limit]=1000')
             .then(res => res.json())
             .then(data => {
                 if (data && data.data) {
@@ -71,8 +71,15 @@ export default function HistorialCompras() {
     }, [ventaIdParam, ventas, loading]);
 
     // Helpers
-    const getProductDetails = (nombreProducto) => {
-        const prod = productos.find(p => p.nombre?.toLowerCase() === nombreProducto?.toLowerCase());
+    const getProductDetails = (nombreProducto, documentId) => {
+        let prod;
+        if (documentId) {
+            prod = productos.find(p => p.documentId === documentId);
+        }
+        
+        if (!prod) {
+            prod = productos.find(p => p.nombre?.trim().toLowerCase() === nombreProducto?.trim().toLowerCase());
+        }
         if (prod) {
             return {
                 nombre: prod.nombre,
@@ -160,7 +167,7 @@ export default function HistorialCompras() {
                                 
                                 <div className="venta-productos">
                                     {venta.detalle?.map((d, index) => {
-                                        const prodDetails = getProductDetails(d.producto_nombre);
+                                        const prodDetails = getProductDetails(d.producto_nombre, d.documentId);
                                         return (
                                             <Link 
                                                 key={index} 

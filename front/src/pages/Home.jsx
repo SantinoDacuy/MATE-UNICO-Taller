@@ -28,7 +28,7 @@ const Hero = () => {
       <div className="hero-right">
         <h1>¡Bienvenidos a nuestra Tienda de Mates!</h1>
         <p>Descubrí un espacio pensado para los amantes del mate. Acá vas a encontrar mates de todo tipo, bombillas, bolsos y accesorios de calidad, ideales para acompañar cada momento de tu día. Queremos que disfrutes de la tradición con estilo y comodidad.</p>
-        <button className="cta" onClick={() => navigate('/producto/och1hcctif58zqukyyg9kd0p')}>Ver ahora</button>
+        <button className="cta" onClick={() => navigate('/producto/u5j8rlumqkhskkallhl5c076')}>Ver ahora</button>
       </div>
     </section>
   );
@@ -105,7 +105,7 @@ const BestSellers = () => {
       </div>
       <div className="best-sellers-list">
         {cargando ? (
-          <p style={{marginTop: '20px', fontWeight: 'bold'}}>Preparando los mates... 🧉</p>
+          <p style={{ marginTop: '20px', fontWeight: 'bold' }}>Preparando los mates... 🧉</p>
         ) : (
           productos.map((prod) => (
             <Link to={`/producto/${prod.documentId}`} className="seller-card" key={prod.id} style={{ textDecoration: 'none', color: 'inherit' }}>
@@ -184,7 +184,7 @@ const Home = () => {
 
   const applyFilters = (filtrosActivos) => {
     if (filtrosActivos && filtrosActivos.length > 0) {
-      const stringFiltros = filtrosActivos.join(','); 
+      const stringFiltros = filtrosActivos.join(',');
       navigate(`/productos?f=${stringFiltros}`);
     } else {
       navigate('/productos');

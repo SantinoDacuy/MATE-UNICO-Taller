@@ -122,7 +122,7 @@ const Footer = () => {
             <p className="mu-quote">
               " Tu historia se cuenta en cada cebada. Hacela ÚNICA... "
             </p>
-            <div className="mu-author">MATE UNICO</div>
+            <div className="mu-author">MATE ÚNICO</div>
 
             <div className="mu-seal-wrapper">
               <svg className="mu-seal-spin" viewBox="0 0 100 100">
