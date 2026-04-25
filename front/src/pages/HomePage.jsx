@@ -14,6 +14,7 @@ const HomePage = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // --- USO DE VARIABLE DE ENTORNO ---
     const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     if (!googleClientId) {
       setError('Error: Google Client ID no configurado');
@@ -42,34 +43,39 @@ const HomePage = () => {
           if (res.ok) {
             const data = await res.json();
             if (data && data.success) {
-              // Guardar token en localStorage
               localStorage.setItem('google_token', token);
               navigate('/');
               return;
+            } else {
+              setError(data.error || 'Error en la autenticación del servidor');
             }
+          } else {
+            const errorData = await res.json().catch(() => ({}));
+            setError(`Error del servidor (${res.status}): ${errorData.error || 'Sin respuesta'}`);
           }
         } catch (fetchError) {
-          console.warn('Backend connection failed, proceeding in offline mode');
+          console.error('Fetch error:', fetchError);
+          setError('No se pudo conectar con el servidor de autenticación (puerto 3001)');
         }
-        
-        // Modo fallback: guardar token y continuar
-        localStorage.setItem('google_token', token);
-        navigate('/');
       } catch (err) {
         setError('Error al procesar autenticación');
-        console.error('Error:', err);
+        console.error('Error general login:', err);
       }
     };
 
     const initGoogle = () => {
       if (window.google && window.google.accounts && window.google.accounts.id) {
         try {
-          window.google.accounts.id.initialize({
-            client_id: googleClientId,
-            callback: handleCredentialResponse,
-            auto_select: false,
-            cancel_on_tap_outside: true,
-          });
+          // Prevenir inicializaciones múltiples
+          if (!window._googleAuthInitialized) {
+            window.google.accounts.id.initialize({
+              client_id: googleClientId,
+              callback: handleCredentialResponse,
+              auto_select: false,
+              cancel_on_tap_outside: true,
+            });
+            window._googleAuthInitialized = true;
+          }
 
           const button = document.getElementById('google-signin-button');
           if (button) {
@@ -94,6 +100,8 @@ const HomePage = () => {
     };
 
     initGoogle();
+    // Timeout para dejar de cargar si Google no se inicializa
+    setTimeout(() => setIsLoading(false), 10000);
   }, [navigate]);
 
   return (
@@ -103,8 +111,12 @@ const HomePage = () => {
     >
       <div className="login-card-container">
         
-        {/* Logo Superior */}
-        <div className="login-logo-top">
+        {/* Reemplaza solo el bloque login-logo-top por este: */}
+        <div 
+          className="login-logo-top" 
+          onClick={() => navigate('/')} 
+          style={{ cursor: 'pointer' }}
+        >
           <span className="logo-text-accent">
             Mate <img src={logoImage} alt="Mate Único Logo" className="logo-inline" /> Único
           </span>
@@ -185,6 +197,10 @@ const HomePage = () => {
           <p className="login-welcome-text-pro">
             Bienvenido a Mate Único, donde la tradición se viste de elegancia.
           </p>
+
+          <div style={{ marginTop: '18px', textAlign: 'center' }}>
+            
+          </div>
         </div>
       </div>
     </div>

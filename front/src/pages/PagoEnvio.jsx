@@ -1,75 +1,110 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { CartContext } from '../context/CartContext'; 
+import Breadcrumbs from '../components/Breadcrumbs';
 import './PagoEnvio.css';
+import './PagoDireccion.css'; 
+import imagenComodin from '../assets/camionero1.png';
 
-// Métodos de envío disponibles
 const SHIPPING_METHODS = [
-  { id: 'oca', name: 'OCA', days: '3-5 Días hábiles' },
-  { id: 'andreani', name: 'Andreani', days: '5-7 Días hábiles' },
-  { id: 'correo-argentino', name: 'Correo Argentino', days: '7-10 Días hábiles' }
+  { id: 'oca', name: 'OCA', days: '3-5 Días hábiles', cost: 4000 },
+  { id: 'andreani', name: 'Andreani', days: '5-7 Días hábiles', cost: 5500 },
+  { id: 'correo-argentino', name: 'Correo Argentino', days: '7-10 Días hábiles', cost: 3000 }
 ];
 
+const formatPrecio = (precio) => `$${precio.toLocaleString('es-AR')}`;
+
 const PagoEnvio = () => {
+  const { cart, totalPrice, totalItems, descuento } = useContext(CartContext);
+  const navigate = useNavigate();
+
   const [metodoSeleccionado, setMetodoSeleccionado] = useState(() => 
     localStorage.getItem('shippingMethod') || 'oca'
   );
-  const [headerHtml, setHeaderHtml] = useState('');
-  const [footerHtml, setFooterHtml] = useState('');
+  
   const [error, setError] = useState('');
-  const navigate = useNavigate();
 
-  // Persistir selección en localStorage
+  const metodoActual = SHIPPING_METHODS.find(m => m.id === metodoSeleccionado);
+  const costoEnvio = metodoActual ? metodoActual.cost : 0;
+  
+  const total = totalPrice + costoEnvio - descuento;
+
   useEffect(() => {
     localStorage.setItem('shippingMethod', metodoSeleccionado);
   }, [metodoSeleccionado]);
 
-  // Cargar header/footer una sola vez
-  useEffect(() => {
-    Promise.all([
-      fetch('/src/components/header.html').then(r => r.text()).catch(() => ''),
-      fetch('/src/components/footer.html').then(r => r.text()).catch(() => '')
-    ]).then(([header, footer]) => {
-      setHeaderHtml(header);
-      setFooterHtml(footer);
-    });
-
-    // Cargar estilos del componente una única vez
-    if (!document.querySelector('link[href="/src/components/styles.css"]')) {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = '/src/components/styles.css';
-      document.head.appendChild(link);
-    }
-  }, []);
-
   const handleContinue = () => {
+    if (cart.length === 0) {
+      setError('El carrito está vacío');
+      return;
+    }
     if (!metodoSeleccionado) {
       setError('Por favor selecciona un método de envío');
       return;
     }
     setError('');
-    navigate('/pago-tarjeta');
+    
+    // Obtenemos los datos actuales de la sesión (nombre, direccion, cupon...)
+    const checkoutData = JSON.parse(sessionStorage.getItem('checkout_data') || '{}');
+    // Le agregamos la información nueva del envío
+    checkoutData.metodoEnvio = metodoActual.name;
+    checkoutData.totalFinal = total;
+    sessionStorage.setItem('checkout_data', JSON.stringify(checkoutData));
+
+    navigate('/pago-tarjeta'); 
   };
 
   return (
     <div className="pago-envio-page">
-      <div id="header-root" dangerouslySetInnerHTML={{ __html: headerHtml }} />
-      
-      <div className="checkout-container">
-        <nav className="breadcrumb">
-          Home &gt; Carrito
-        </nav>
+      <Breadcrumbs />
 
-        <div className="stepper">
-          <span className="step">Dirección</span>
-          <div className="line"></div>
-          <span className="step active">Envío</span>
-          <div className="line"></div>
-          <span className="step">Pago</span>
-        </div>
+      <main className="checkout-contenedor-principal">
+        <section className="checkout-columna-izquierda">
+          <h1 className="titulo-carrito">Tu carrito</h1>
 
-        <main className="content">
-          <h2 className="section-title">Información</h2>
+          <div className="productos-lista-checkout">
+            {cart.length === 0 && <div className="empty-checkout">Tu carrito está vacío.</div>}
+            {cart.map((producto, index) => (
+              <div key={`${producto.id}-${index}`} className="producto-item-checkout card-item">
+                <img src={producto.imagen ? `http://localhost:1337${producto.imagen}` : imagenComodin} alt={producto.nombre} className="producto-imagen-checkout" loading="lazy" />
+                <div className="producto-detalle-checkout">
+                  <h3 className="nombre-producto-checkout">{producto.nombre}</h3>
+                  <div className="meta-checkout">
+                    <span className="color-producto-checkout">Color: {producto.color}</span>
+                    {producto.grabado && producto.grabado !== 'Sin grabado' && (
+                      <span className="color-producto-checkout" style={{marginLeft: '10px'}}>Grabado: {producto.grabado}</span>
+                    )}
+                    <span className="cantidad-producto-checkout" style={{display: 'block', marginTop: '5px'}}>Qty: {producto.cantidad}</span>
+                  </div>
+                  <div className="precio-producto-checkout">{formatPrecio(producto.precio * producto.cantidad)}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="resumen-orden card-resumen">
+            <div className="resumen-fila"><span className="resumen-label">Subtotal</span><span className="resumen-valor">{formatPrecio(totalPrice)}</span></div>
+            <div className="resumen-fila"><span className="resumen-label">Envío ({metodoActual?.name})</span><span className="resumen-valor">{formatPrecio(costoEnvio)}</span></div>
+            
+            {descuento > 0 && (
+              <div className="resumen-fila"><span className="resumen-label">Descuento</span><span className="resumen-valor descuento-valor">-{formatPrecio(descuento)}</span></div>
+            )}
+            
+            <hr className="resumen-separador" />
+            <div className="resumen-fila resumen-total"><span className="resumen-label">Total</span><span className="resumen-valor">{formatPrecio(total)}</span></div>
+          </div>
+        </section>
+
+        <section className="checkout-columna-derecha">
+          <div className="pasos-checkout">
+            <span className="paso-activo" style={{color: '#888', fontWeight: 'normal', fontSize: '14px'}}>Dirección</span>
+            <div className="line" style={{backgroundColor: '#000'}}></div>
+            <span className="paso-activo">Envío</span>
+            <div className="line"></div>
+            <span>Pago</span>
+          </div>
+
+          <h2 className="titulo-informacion" style={{marginTop: '0'}}>Método de envío</h2>
 
           <div className="options-container">
             {SHIPPING_METHODS.map(method => (
@@ -79,36 +114,24 @@ const PagoEnvio = () => {
                 onClick={() => setMetodoSeleccionado(method.id)}
                 role="radio"
                 aria-checked={metodoSeleccionado === method.id}
+                style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}
               >
-                <input
-                  type="radio"
-                  name="shipping-method"
-                  value={method.id}
-                  checked={metodoSeleccionado === method.id}
-                  onChange={(e) => setMetodoSeleccionado(e.target.value)}
-                  aria-label={`Seleccionar ${method.name}`}
-                />
-                <div className="option-details">
-                  <strong>{method.name}</strong>
-                  <p>{method.days}</p>
+                <div style={{display: 'flex', alignItems: 'center', gap: '14px'}}>
+                  <input type="radio" name="shipping-method" value={method.id} checked={metodoSeleccionado === method.id} onChange={(e) => setMetodoSeleccionado(e.target.value)} />
+                  <div className="option-details">
+                    <strong>{method.name}</strong>
+                    <p>{method.days}</p>
+                  </div>
                 </div>
+                <div style={{fontWeight: '600', color: '#0b0b0b'}}>{formatPrecio(method.cost)}</div>
               </div>
             ))}
           </div>
 
           {error && <div className="error-message">{error}</div>}
-
-          <button
-            className="btn-continue"
-            onClick={handleContinue}
-            aria-label="Continuar con el pago"
-          >
-            Continuar
-          </button>
-        </main>
-      </div>
-      
-      <div id="footer-root" dangerouslySetInnerHTML={{ __html: footerHtml }} />
+          <button className="btn-continuar" onClick={handleContinue}>Continuar al Pago</button>
+        </section>
+      </main>
     </div>
   );
 };

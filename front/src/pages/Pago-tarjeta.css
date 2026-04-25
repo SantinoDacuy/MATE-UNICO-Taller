@@ -1,0 +1,205 @@
+/* Reutilizamos los estilos base del contenedor y stepper del paso anterior */
+
+.pago-tarjeta-page {
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+}
+
+.payment-section {
+  max-width: 500px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.payment-header {
+  margin-bottom: 20px;
+}
+
+.section-title {
+  font-size: 24px;
+  color: #333;
+  margin: 0;
+}
+
+/* Caja de info de Mercado Pago */
+.mp-info-box {
+  background-color: #f7f9fc;
+  border: 1px solid #e0e6ed;
+  border-radius: 8px;
+  padding: 30px 20px;
+  margin-bottom: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+.mp-logo-large {
+  height: 50px;
+  width: auto;
+}
+
+.mp-info-box p {
+  font-size: 14px;
+  color: #555;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Botón de pago */
+.btn-pay.mp-button {
+  background-color: #080808;
+  color: white;
+  border: none;
+  padding: 15px 80px;
+  font-size: 16px;
+  cursor: pointer;
+  width: 100%;
+  max-width: 600px;
+  margin: 20px auto 0 auto;
+  display: block;
+  transition: background-color 0.2s ease;
+}
+
+.btn-pay.mp-button:hover {
+  background-color: #222;
+}
+
+.btn-pay.mp-button:active {
+  background-color: #0b0b0b;
+}
+
+/* Hojas decorativas */
+.leaf-decoration {
+  position: absolute;
+  bottom: 0;
+  width: 250px;
+  height: 250px;
+  z-index: -1;
+  opacity: 0.6;
+}
+
+.leaf-decoration.left { left: 0; }
+.leaf-decoration.right { right: 0; transform: scaleX(-1); }
+
+/* Responsive */
+/* Tablet (900px and below) */
+@media (max-width: 900px) {
+  .payment-section {
+    max-width: 100%;
+    padding: 0 20px;
+  }
+
+  .section-title {
+    font-size: 20px;
+  }
+
+  .mp-info-box {
+    padding: 24px 16px;
+    margin-bottom: 24px;
+  }
+
+  .btn-pay.mp-button {
+    padding: 12px 60px;
+    font-size: 15px;
+  }
+}
+
+/* Mobile (768px and below) */
+@media (max-width: 768px) {
+  .payment-section {
+    padding: 0 15px;
+  }
+
+  .payment-header {
+    margin-bottom: 16px;
+  }
+
+  .section-title {
+    font-size: 18px;
+  }
+
+  .mp-info-box {
+    padding: 20px 14px;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .mp-logo-large {
+    height: 40px;
+  }
+
+  .mp-info-box p {
+    font-size: 13px;
+  }
+
+  .btn-pay.mp-button {
+    padding: 12px 40px;
+    font-size: 14px;
+    margin-top: 16px;
+  }
+
+  .leaf-decoration {
+    width: 180px;
+    height: 180px;
+    opacity: 0.3;
+  }
+}
+
+/* Mobile Small (600px and below) */
+@media (max-width: 600px) {
+  .payment-section {
+    padding: 0 12px;
+  }
+
+  .section-title {
+    font-size: 16px;
+  }
+
+  .mp-info-box {
+    padding: 16px 12px;
+    margin-bottom: 16px;
+  }
+
+  .mp-logo-large {
+    height: 36px;
+  }
+
+  .mp-info-box p {
+    font-size: 12px;
+  }
+
+  .btn-pay.mp-button {
+    padding: 11px 32px;
+    font-size: 13px;
+    max-width: 90%;
+  }
+}
+
+/* Extra Small (480px and below) */
+@media (max-width: 480px) {
+  .payment-section {
+    padding: 0 10px;
+  }
+
+  .section-title {
+    font-size: 15px;
+  }
+
+  .mp-info-box {
+    padding: 14px 10px;
+  }
+
+  .mp-logo-large {
+    height: 32px;
+  }
+
+  .btn-pay.mp-button {
+    padding: 10px 28px;
+    font-size: 12px;
+  }
+
+  .leaf-decoration {
+    width: 120px;
+    height: 120px;
+  }
+}

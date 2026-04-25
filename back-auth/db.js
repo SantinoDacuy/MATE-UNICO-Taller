@@ -15,4 +15,5 @@ const pool = new Pool({
 // Exportamos una función para hacer consultas
 module.exports = {
     query: (text, params) => pool.query(text, params),
+    getClient: () => pool.connect(),
 };

@@ -1,107 +1,90 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import './FilterPanel.css';
 
 const FilterPanel = ({ open, onClose, onApply }) => {
-  const [category, setCategory] = useState('');
-  const [comboOption, setComboOption] = useState('');
-  const [mateMaterial, setMateMaterial] = useState('');
-  const [calabazaType, setCalabazaType] = useState('');
+  const [filtrosActivos, setFiltrosActivos] = useState([]);
 
-  // reset dependent fields when category changes
-  useEffect(() => {
-    setComboOption('');
-    setMateMaterial('');
-    setCalabazaType('');
-  }, [category]);
-
-  // reset type when mateMaterial changes
-  useEffect(() => {
-    if (mateMaterial !== 'calabaza') {
-      setCalabazaType('');
-    }
-  }, [mateMaterial]);
+  const toggleFiltro = (valor) => {
+    setFiltrosActivos(prev => 
+      prev.includes(valor) ? prev.filter(f => f !== valor) : [...prev, valor]
+    );
+  };
 
   const handleApply = () => {
-    onApply({ category, comboOption, mateMaterial, calabazaType });
-    onClose();
+    // ACÁ ESTÁ LA MAGIA: Le pasamos la lista de palabras directo al Home
+    onApply(filtrosActivos); 
   };
 
   return (
-    <div className={`filter-panel ${open ? 'open' : ''}`} aria-hidden={!open}>
+    <div className={`filter-panel ${open ? 'open' : ''}`}>
       <button className="close-btn" onClick={onClose} aria-label="Cerrar filtros">×</button>
       <h2 className="filter-title">Filtrar productos</h2>
 
-      <div className="filter-group">
-        <label htmlFor="f-category">¿Qué buscas?</label>
-        <select
-          id="f-category"
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-        >
-          <option value="">-- Seleccione --</option>
-          <option value="mate">Mate</option>
-          <option value="combo">Combo</option>
-        </select>
-      </div>
-
-      {category === 'combo' && (
-        <div className="filter-group">
-          <label htmlFor="f-combo">Tipo de combo</label>
-          <select
-            id="f-combo"
-            value={comboOption}
-            onChange={(e) => setComboOption(e.target.value)}
-          >
-            <option value="">-- Seleccione --</option>
-            <option value="bombilla">Mate + bombilla</option>
-            <option value="mate-bombilla-bolso">Mate + bombilla + bolso</option>
-          </select>
-        </div>
-      )}
-
-      {category === 'mate' && (
-        <>
-          <div className="filter-group">
-            <label htmlFor="f-material">Material del mate</label>
-            <select
-              id="f-material"
-              value={mateMaterial}
-              onChange={(e) => setMateMaterial(e.target.value)}
-            >
-              <option value="">-- Seleccione --</option>
-              <option value="calabaza">Calabaza</option>
-              <option value="metal">Metal</option>
-              <option value="madera">Madera</option>
-              <option value="vidrio">Vidrio</option>
-            </select>
+      <div className="catalogo-sidebar-mobile">
+        <div className="filtro-grupo">
+          <h4>Mate</h4>
+          
+          <div className="filtro-subgrupo">
+            <h5>Calabaza</h5>
+            <label><input type="checkbox" checked={filtrosActivos.includes('calabaza-imperial')} onChange={() => toggleFiltro('calabaza-imperial')} /> Imperial</label>
+            <label><input type="checkbox" checked={filtrosActivos.includes('calabaza-torpedo')} onChange={() => toggleFiltro('calabaza-torpedo')} /> Torpedo</label>
+            <label><input type="checkbox" checked={filtrosActivos.includes('calabaza-camionero')} onChange={() => toggleFiltro('calabaza-camionero')} /> Camionero</label>
+          </div>
+          
+          <div className="filtro-subgrupo">
+            <h5>Madera</h5>
+            <label><input type="checkbox" checked={filtrosActivos.includes('madera-imperial')} onChange={() => toggleFiltro('madera-imperial')} /> Imperial</label>
+            <label><input type="checkbox" checked={filtrosActivos.includes('madera-torpedo')} onChange={() => toggleFiltro('madera-torpedo')} /> Torpedo</label>
+            <label><input type="checkbox" checked={filtrosActivos.includes('madera-camionero')} onChange={() => toggleFiltro('madera-camionero')} /> Camionero</label>
           </div>
 
-          {mateMaterial === 'calabaza' && (
-            <div className="filter-group">
-              <label htmlFor="f-calabaza">Tipo de calabaza</label>
-              <select
-                id="f-calabaza"
-                value={calabazaType}
-                onChange={(e) => setCalabazaType(e.target.value)}
-              >
-                <option value="">-- Seleccione --</option>
-                <option value="imperial">Imperial</option>
-                <option value="torpedo">Torpedo</option>
-                <option value="camionero">Camionero</option>
-              </select>
-            </div>
-          )}
-        </>
-      )}
+          <div className="filtro-subgrupo">
+            <h5>Metal</h5>
+            <label><input type="checkbox" checked={filtrosActivos.includes('metal')} onChange={() => toggleFiltro('metal')} /> Metal</label>
+          </div>
 
-      <div className="filter-actions">
-        <button
-          className="apply-btn"
-          onClick={handleApply}
-          disabled={!category} /* permit aplicar tan pronto como se elija categoria */
-        >
-          Aplicar filtro
+          <div className="filtro-subgrupo">
+            <h5>Vidrio</h5>
+            <label><input type="checkbox" checked={filtrosActivos.includes('vidrio')} onChange={() => toggleFiltro('vidrio')} /> Vidrio</label>
+          </div>
+        </div>
+
+        <div className="filtro-grupo">
+          <h4>Combos</h4>
+          <label className="filtro-suelto">
+            <input type="checkbox" checked={filtrosActivos.includes('combo_simple')} onChange={() => toggleFiltro('combo_simple')} /> 
+            Mate + Bombilla
+          </label>
+          <label className="filtro-suelto">
+            <input type="checkbox" checked={filtrosActivos.includes('combo_completo')} onChange={() => toggleFiltro('combo_completo')} /> 
+            Mate + Bombilla + Bolso
+          </label>
+        </div>
+
+        <div className="filtro-grupo">
+          <h4>Colores</h4>
+          <div className="colores-grid">
+            <label className="color-option"><input type="checkbox" checked={filtrosActivos.includes('negro')} onChange={() => toggleFiltro('negro')} /><span className="color-circle" style={{backgroundColor: '#000'}}></span> Negro</label>
+            <label className="color-option"><input type="checkbox" checked={filtrosActivos.includes('marron')} onChange={() => toggleFiltro('marron')} /><span className="color-circle" style={{backgroundColor: '#8B4513'}}></span> Marrón</label>
+            <label className="color-option"><input type="checkbox" checked={filtrosActivos.includes('blanco')} onChange={() => toggleFiltro('blanco')} /><span className="color-circle" style={{backgroundColor: '#fff', border: '1px solid #ccc'}}></span> Blanco</label>
+            <label className="color-option"><input type="checkbox" checked={filtrosActivos.includes('gris')} onChange={() => toggleFiltro('gris')} /><span className="color-circle" style={{backgroundColor: '#808080'}}></span> Gris</label>
+          </div>
+        </div>
+      </div>
+
+      <div className="filter-actions" style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
+        <button className="apply-btn" onClick={handleApply}>
+          Ver Resultados
         </button>
+        
+        {filtrosActivos.length > 0 && (
+          <button 
+            className="clear-btn" 
+            onClick={() => setFiltrosActivos([])}
+          >
+            Limpiar Filtros
+          </button>
+        )}
       </div>
     </div>
   );

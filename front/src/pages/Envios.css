@@ -1,0 +1,243 @@
+.envios-page {
+    background-color: #fcfcfc;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: #333;
+    padding: 80px 20px;
+    min-height: calc(100vh - 100px);
+}
+
+.envios-container {
+    max-width: 900px;
+    margin: 0 auto;
+    animation: fadeInUpEnvios 0.8s ease forwards;
+}
+
+@keyframes fadeInUpEnvios {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* HERO SECTION */
+.envios-hero {
+    text-align: center;
+    margin-bottom: 70px;
+}
+
+.envios-title {
+    font-size: 3rem;
+    font-weight: 800;
+    line-height: 1.1;
+    color: #1a1a1a;
+    margin-bottom: 25px;
+    letter-spacing: -1px;
+}
+
+.envios-subtitle {
+    font-size: 1.15rem;
+    color: #666;
+    line-height: 1.6;
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+/* GRID DE ÍCONOS */
+.envios-features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 30px;
+    margin-bottom: 90px;
+}
+
+.envios-feature {
+    background-color: #fff;
+    padding: 35px 25px;
+    border-radius: 12px;
+    border: 1px solid #eaeaea;
+    text-align: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.envios-feature:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+}
+
+.envios-icon-box {
+    width: 65px;
+    height: 65px;
+    background-color: #faf5f0; /* Color cremita cálido (yerba suave) */
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #8B5A2B; /* Marrón mate clásico, elegante */
+    margin-bottom: 20px;
+    transition: background-color 0.4s ease, color 0.4s ease, transform 0.4s ease;
+}
+
+.envios-feature:hover .envios-icon-box {
+    background-color: #8B5A2B;
+    color: #fff;
+    transform: scale(1.05);
+}
+
+.envios-feature h3 {
+    font-size: 1.2rem;
+    color: #1a1a1a;
+    margin-bottom: 12px;
+    font-weight: 700;
+}
+
+.envios-feature p {
+    font-size: 0.95rem;
+    color: #666;
+    line-height: 1.5;
+}
+
+/* POLÍTICAS (TEXTO BODY) */
+.envios-policy-body {
+    max-width: 750px;
+    margin: 0 auto 80px auto;
+}
+
+.envios-section {
+    margin-bottom: 50px;
+}
+
+.envios-section h2 {
+    font-size: 1.6rem;
+    color: #333;
+    margin-bottom: 15px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    border-bottom: 2px solid #faf5f0; /* Detalle de línea sutil */
+    padding-bottom: 8px;
+    display: inline-block;
+}
+
+.envios-section p {
+    font-size: 1.1rem;
+    color: #555;
+    line-height: 1.7;
+    margin-bottom: 15px;
+}
+
+.envios-list {
+    list-style: none;
+    padding: 0;
+    margin: 15px 0 0 0;
+}
+
+.envios-list li {
+    font-size: 1.1rem;
+    color: #555;
+    margin-bottom: 10px;
+    padding-left: 20px;
+    position: relative;
+    line-height: 1.5;
+}
+
+.envios-list li::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: #1a1a1a;
+    font-weight: bold;
+}
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+    .envios-page {
+        padding: 50px 30px;
+    }
+
+    .envios-features-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+    }
+
+    .envios-title {
+        font-size: 2.5rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .envios-page {
+        padding: 40px 20px;
+    }
+
+    .envios-title {
+        font-size: 2rem;
+    }
+
+    .envios-features-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .envios-section h2 {
+        font-size: 1.3rem;
+    }
+
+    .envios-section p, .envios-list li {
+        font-size: 1rem;
+    }
+
+    .envios-feature-card {
+        padding: 20px;
+    }
+}
+
+@media (max-width: 600px) {
+    .envios-page {
+        padding: 30px 16px;
+    }
+
+    .envios-title {
+        font-size: 1.6rem;
+    }
+
+    .envios-features-grid {
+        gap: 12px;
+    }
+
+    .envios-section h2 {
+        font-size: 1.1rem;
+    }
+
+    .envios-section p, .envios-list li {
+        font-size: 0.95rem;
+    }
+
+    .envios-feature-card {
+        padding: 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    .envios-page {
+        padding: 24px 12px;
+    }
+
+    .envios-title {
+        font-size: 1.4rem;
+    }
+
+    .envios-section h2 {
+        font-size: 1rem;
+    }
+
+    .envios-section p, .envios-list li {
+        font-size: 0.9rem;
+    }
+
+    .envios-feature-card {
+        padding: 14px;
+    }
+}
