@@ -327,6 +327,40 @@ const getProductIdFromDocumentId = async (documentId) => {
     }
 };
 
+const getComboIdFromDocumentId = async (documentId) => {
+    try {
+        // Primero, intentar como número directo (compatibilidad)
+        const numId = parseInt(documentId, 10);
+        if (!isNaN(numId)) {
+            let result = await db.query(
+                `SELECT id FROM combo WHERE id = $1 LIMIT 1`,
+                [numId]
+            );
+            if (result.rows.length > 0) {
+                console.log(`✓ Combo encontrado por ID directo: ${numId}`);
+                return numId;
+            }
+        }
+
+        // Buscar en strapi_producto_map usando strapi_document_id
+        let result = await db.query(
+            `SELECT combo_id FROM strapi_producto_map WHERE strapi_document_id = $1 LIMIT 1`,
+            [documentId]
+        );
+
+        if (result.rows.length > 0 && result.rows[0].combo_id) {
+            console.log(`✓ Combo encontrado vía strapi_producto_map: ${result.rows[0].combo_id}`);
+            return result.rows[0].combo_id;
+        }
+
+        console.warn(`⚠️ No se encontró Combo para documentId: ${documentId}`);
+        return null;
+    } catch (err) {
+        console.error('Error mapeando documentId a combo:', err);
+        return null;
+    }
+};
+
 app.get('/api/reviews/can-review', async (req, res) => {
     if (!req.session || !req.session.userId) return res.status(401).json({ canReview: false });
 
@@ -334,8 +368,8 @@ app.get('/api/reviews/can-review', async (req, res) => {
     const userId = req.session.userId;
 
     try {
-        // Mapear documentId a id_producto
-        const dbProductId = productType === 'combo' ? productId : await getProductIdFromDocumentId(productId);
+        // Mapear documentId a id_producto o id_combo
+        const dbProductId = productType === 'combo' ? await getComboIdFromDocumentId(productId) : await getProductIdFromDocumentId(productId);
 
         if (!dbProductId) {
             return res.json({ canReview: false, message: '⚠️ Producto no encontrado.' });
@@ -419,8 +453,8 @@ app.get('/api/reviews', async (req, res) => {
     const { productId, productType } = req.query;
 
     try {
-        // Mapear documentId a id_producto
-        const dbProductId = productType === 'combo' ? productId : await getProductIdFromDocumentId(productId);
+        // Mapear documentId a id_producto o id_combo
+        const dbProductId = productType === 'combo' ? await getComboIdFromDocumentId(productId) : await getProductIdFromDocumentId(productId);
 
         if (!dbProductId) {
             return res.json({ success: true, reviews: [], averageRating: 0 });
@@ -485,8 +519,8 @@ app.post('/api/reviews', async (req, res) => {
             return res.status(400).json({ error: 'Datos inválidos' });
         }
 
-        // Mapear documentId a id_producto
-        const dbProductId = productType === 'combo' ? productId : await getProductIdFromDocumentId(productId);
+        // Mapear documentId a id_producto o id_combo
+        const dbProductId = productType === 'combo' ? await getComboIdFromDocumentId(productId) : await getProductIdFromDocumentId(productId);
 
         if (!dbProductId) {
             return res.status(400).json({ error: 'Producto no encontrado' });

@@ -425,7 +425,10 @@ const ProductPage = () => {
         </section>
 
         <section className="reviews-section">
-          <ReviewsSection productId={id} productType="producto" />
+          <ReviewsSection 
+            productId={id} 
+            productType={producto?.categoria?.startsWith('combo') ? 'combo' : 'producto'} 
+          />
         </section>
 
         <section className="similar-products">
